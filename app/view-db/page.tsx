@@ -113,12 +113,6 @@ export default async function ViewDbPage({ searchParams }: ViewDbPageProps) {
           )}
         </section>
       )}
-
-      <p className="text-sm text-zinc-500">
-        <Link href="/" className="underline hover:text-zinc-700">
-          На главную
-        </Link>
-      </p>
     </main>
   );
 }

@@ -4,7 +4,8 @@ import { withDb } from "@/lib/db-client";
 const TEST_USER_EMAIL = "db-check@receptoria.local";
 const TEST_USER_NAME = "DB Check User";
 const TEST_CATEGORY_NAME = "Тестовая категория";
-const TEST_RECIPE_ID = "cldbcheckrecipe000000001";
+const TEST_RECIPE_ID_1 = "cldbcheckrecipe000000001";
+const TEST_RECIPE_ID_2 = "cldbcheckrecipe000000002";
 
 async function ensureCategory() {
   return withDb("category", async (prisma) => {
@@ -35,28 +36,35 @@ async function ensureUser() {
   );
 }
 
-async function ensureRecipe(ownerId: string, categoryId: string) {
-  return withDb("recipe", (prisma) =>
+async function ensureRecipe(
+  id: string,
+  ownerId: string,
+  categoryId: string,
+  title: string,
+  content: string,
+  visibility: RecipeVisibility,
+) {
+  return withDb(`recipe-${id}`, (prisma) =>
     prisma.recipe.upsert({
-      where: { id: TEST_RECIPE_ID },
+      where: { id },
       update: {
         ownerId,
         categoryId,
-        title: "Тестовый рецепт Receptoria",
-        content: "Ингредиенты и шаги для проверки схемы БД.",
+        title,
+        content,
         description: "Создан проверочным скриптом db:check",
-        visibility: RecipeVisibility.PUBLIC,
-        publishedAt: new Date(),
+        visibility,
+        publishedAt: visibility === RecipeVisibility.PUBLIC ? new Date() : null,
       },
       create: {
-        id: TEST_RECIPE_ID,
+        id,
         ownerId,
         categoryId,
-        title: "Тестовый рецепт Receptoria",
-        content: "Ингредиенты и шаги для проверки схемы БД.",
+        title,
+        content,
         description: "Создан проверочным скриптом db:check",
-        visibility: RecipeVisibility.PUBLIC,
-        publishedAt: new Date(),
+        visibility,
+        publishedAt: visibility === RecipeVisibility.PUBLIC ? new Date() : null,
       },
     }),
   );
@@ -81,7 +89,7 @@ async function ensureVote(userId: string, recipeId: string) {
   );
 }
 
-async function printCounts(recipeId: string) {
+async function printCounts(recipeIds: string[]) {
   await withDb("counts", async (prisma) => {
     const [userCount, categoryCount, recipeCount, voteCount] =
       await Promise.all([
@@ -96,16 +104,36 @@ async function printCounts(recipeId: string) {
     console.log(`  Category: ${categoryCount}`);
     console.log(`  Recipe:   ${recipeCount}`);
     console.log(`  Vote:     ${voteCount}`);
-    console.log(`  Recipe id: ${recipeId}`);
+    for (const recipeId of recipeIds) {
+      console.log(`  Recipe id: ${recipeId}`);
+    }
   });
 }
 
 async function main() {
   const category = await ensureCategory();
   const user = await ensureUser();
-  const recipe = await ensureRecipe(user.id, category.id);
-  await ensureVote(user.id, recipe.id);
-  await printCounts(recipe.id);
+
+  const recipe1 = await ensureRecipe(
+    TEST_RECIPE_ID_1,
+    user.id,
+    category.id,
+    "Первый тестовый рецепт",
+    "Шаг 1. Подготовить ингредиенты.",
+    RecipeVisibility.PUBLIC,
+  );
+
+  const recipe2 = await ensureRecipe(
+    TEST_RECIPE_ID_2,
+    user.id,
+    category.id,
+    "Второй тестовый рецепт",
+    "Шаг 1. Нарезать овощи.",
+    RecipeVisibility.PRIVATE,
+  );
+
+  await ensureVote(user.id, recipe1.id);
+  await printCounts([recipe1.id, recipe2.id]);
 }
 
 main().catch((error) => {
