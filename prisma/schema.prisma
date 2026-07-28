@@ -91,6 +91,7 @@ model Recipe {
   description String?
   categoryId  String
   visibility  RecipeVisibility @default(PRIVATE)
+  isFavorite  Boolean          @default(false)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   publishedAt DateTime?
@@ -101,7 +102,9 @@ model Recipe {
   tags     Tag[]
 
   @@index([ownerId, updatedAt])
+  @@index([ownerId, createdAt])
   @@index([visibility, createdAt])
+  @@index([isFavorite])
 }
 
 model Category {

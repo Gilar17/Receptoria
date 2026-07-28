@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/my-recipes"];
+const PROTECTED_PREFIXES = ["/dashboard"];
 
 /**
  * Middleware Auth.js (без PrismaAdapter — только cookie-сессия и редиректы).
@@ -13,6 +13,10 @@ const { auth } = NextAuth(authConfig);
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isLoggedIn = Boolean(req.auth?.user);
+
+  if (pathname === "/my-recipes" || pathname.startsWith("/my-recipes/")) {
+    return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
+  }
 
   const isProtected = PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),

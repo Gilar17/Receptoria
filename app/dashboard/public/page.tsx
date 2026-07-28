@@ -1,68 +1,61 @@
 import { Suspense } from "react";
-import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/app/dashboard/_components/dashboard-header";
 import { EmptyState } from "@/app/dashboard/_components/empty-state";
-import { RecipeCreateButton } from "@/app/dashboard/_components/recipe-create-button";
 import { RecipeList } from "@/app/dashboard/_components/recipe-list";
 import { RecipePagination } from "@/app/dashboard/_components/recipe-pagination";
 import { RecipeSearch } from "@/app/dashboard/_components/recipe-search";
 import { requireAuth } from "@/lib/auth";
-import { getMyRecipes } from "@/lib/recipes/queries";
+import { getPublicRecipesPaginated } from "@/lib/recipes/queries";
 import { parseSearchQuery } from "@/lib/recipes/helpers";
 
 export const dynamic = "force-dynamic";
 
-type DashboardPageProps = {
+type PublicPageProps = {
   searchParams: Promise<{ q?: string; page?: string }>;
 };
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function PublicRecipesPage({
+  searchParams,
+}: PublicPageProps) {
   const session = await requireAuth();
   const params = await searchParams;
   const q = parseSearchQuery(params.q);
-  const data = await getMyRecipes(session.user.id, params);
-
-  const isSearch = Boolean(q);
-  const isEmpty = data.total === 0;
+  const data = await getPublicRecipesPaginated(params);
 
   return (
     <>
       <DashboardHeader
         user={session.user}
-        sectionTitle="Мои рецепты"
-        showCreate
+        sectionTitle="Публичные рецепты"
       />
 
       <Suspense fallback={null}>
         <RecipeSearch />
       </Suspense>
 
-      {!isEmpty ? (
+      {data.total > 0 ? (
         <p className="mb-4 text-sm text-slate-500">
           Найдено рецептов: {data.total}
         </p>
       ) : null}
 
-      {isEmpty ? (
-        isSearch ? (
+      {data.total === 0 ? (
+        q ? (
           <EmptyState title="По вашему запросу ничего не найдено" />
         ) : (
-          <EmptyState
-            title="У вас пока нет рецептов — создайте первый"
-            action={
-              <RecipeCreateButton>
-                <Button>Создать рецепт</Button>
-              </RecipeCreateButton>
-            }
-          />
+          <EmptyState title="Публичных рецептов пока нет" />
         )
       ) : (
         <>
-          <RecipeList recipes={data.items} currentUserId={session.user.id} />
+          <RecipeList
+            recipes={data.items}
+            currentUserId={session.user.id}
+            showAuthor
+          />
           <RecipePagination
             page={data.page}
             totalPages={data.totalPages}
-            basePath="/dashboard"
+            basePath="/dashboard/public"
             q={q}
           />
         </>

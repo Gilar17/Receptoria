@@ -1,60 +1,38 @@
 import { Suspense } from "react";
-import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/app/dashboard/_components/dashboard-header";
 import { EmptyState } from "@/app/dashboard/_components/empty-state";
-import { RecipeCreateButton } from "@/app/dashboard/_components/recipe-create-button";
 import { RecipeList } from "@/app/dashboard/_components/recipe-list";
 import { RecipePagination } from "@/app/dashboard/_components/recipe-pagination";
 import { RecipeSearch } from "@/app/dashboard/_components/recipe-search";
 import { requireAuth } from "@/lib/auth";
-import { getMyRecipes } from "@/lib/recipes/queries";
+import { getFavoriteRecipes } from "@/lib/recipes/queries";
 import { parseSearchQuery } from "@/lib/recipes/helpers";
 
 export const dynamic = "force-dynamic";
 
-type DashboardPageProps = {
+type FavoritesPageProps = {
   searchParams: Promise<{ q?: string; page?: string }>;
 };
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function FavoritesPage({ searchParams }: FavoritesPageProps) {
   const session = await requireAuth();
   const params = await searchParams;
   const q = parseSearchQuery(params.q);
-  const data = await getMyRecipes(session.user.id, params);
-
-  const isSearch = Boolean(q);
-  const isEmpty = data.total === 0;
+  const data = await getFavoriteRecipes(session.user.id, params);
 
   return (
     <>
-      <DashboardHeader
-        user={session.user}
-        sectionTitle="Мои рецепты"
-        showCreate
-      />
+      <DashboardHeader user={session.user} sectionTitle="Избранное" />
 
       <Suspense fallback={null}>
         <RecipeSearch />
       </Suspense>
 
-      {!isEmpty ? (
-        <p className="mb-4 text-sm text-slate-500">
-          Найдено рецептов: {data.total}
-        </p>
-      ) : null}
-
-      {isEmpty ? (
-        isSearch ? (
+      {data.total === 0 ? (
+        q ? (
           <EmptyState title="По вашему запросу ничего не найдено" />
         ) : (
-          <EmptyState
-            title="У вас пока нет рецептов — создайте первый"
-            action={
-              <RecipeCreateButton>
-                <Button>Создать рецепт</Button>
-              </RecipeCreateButton>
-            }
-          />
+          <EmptyState title="В избранном пока ничего нет" />
         )
       ) : (
         <>
@@ -62,7 +40,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <RecipePagination
             page={data.page}
             totalPages={data.totalPages}
-            basePath="/dashboard"
+            basePath="/dashboard/favorites"
             q={q}
           />
         </>
