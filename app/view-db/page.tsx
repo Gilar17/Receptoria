@@ -1,9 +1,9 @@
 import Link from "next/link";
 import {
+  getDbTargetEnvLabel,
   getDbTargetLabel,
   isDbTarget,
   listTables,
-  maskConnectionHost,
   type DbTarget,
 } from "@/lib/view-db";
 
@@ -27,15 +27,15 @@ function TargetCard({
       href={`/view-db?target=${target}`}
       className={`rounded-xl border px-5 py-4 transition-colors ${
         active
-          ? "border-zinc-900 bg-zinc-900 text-white"
+          ? "border-blue-600 bg-blue-600 text-white"
           : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400"
       }`}
     >
       <div className="font-medium">{label}</div>
       <div
-        className={`mt-1 text-sm ${active ? "text-zinc-200" : "text-zinc-500"}`}
+        className={`mt-1 text-sm ${active ? "text-blue-100" : "text-zinc-500"}`}
       >
-        {maskConnectionHost(target)}
+        {getDbTargetEnvLabel(target)}
       </div>
     </Link>
   );
@@ -62,7 +62,7 @@ export default async function ViewDbPage({ searchParams }: ViewDbPageProps) {
       <header className="space-y-2">
         <p className="text-sm text-zinc-500">view-db</p>
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
-          Просмотр базы данных
+          Receptoria — просмотр базы данных
         </h1>
         <p className="text-zinc-600">
           Выберите локальную или рабочую БД, затем откройте нужную таблицу.
@@ -103,7 +103,7 @@ export default async function ViewDbPage({ searchParams }: ViewDbPageProps) {
                   </div>
                   <Link
                     href={`/view-db/${encodeURIComponent(table.name)}?target=${selectedTarget}`}
-                    className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700"
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                   >
                     Открыть
                   </Link>

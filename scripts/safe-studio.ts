@@ -3,10 +3,11 @@ import { createServer } from "node:http";
 import { URL } from "node:url";
 import {
   fetchTableRows,
+  getDbTargetEnvLabel,
   getDbTargetLabel,
   isDbTarget,
+  isSystemTable,
   listTables,
-  maskConnectionHost,
   type DbTarget,
 } from "@/lib/view-db";
 
@@ -53,15 +54,15 @@ function page(title: string, body: string): string {
     p { color: #52525b; }
     .cards { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 1.5rem 0; }
     .card { display: block; padding: 1rem 1.25rem; border-radius: 0.75rem; border: 1px solid #e4e4e7; background: #fff; text-decoration: none; color: inherit; }
-    .card.active { background: #18181b; border-color: #18181b; color: #fff; }
-    .card.active small { color: #d4d4d8; }
+    .card.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .card.active small { color: #dbeafe; }
     .card small { display: block; margin-top: 0.25rem; color: #71717a; font-size: 0.875rem; }
     .error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 0.75rem 1rem; border-radius: 0.75rem; }
     .notice { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 0.75rem 1rem; border-radius: 0.75rem; margin-bottom: 1rem; font-size: 0.875rem; }
     ul { list-style: none; padding: 0; margin: 0; border: 1px solid #e4e4e7; border-radius: 0.75rem; overflow: hidden; background: #fff; }
     li { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.875rem 1rem; border-bottom: 1px solid #f4f4f5; }
     li:last-child { border-bottom: 0; }
-    .btn { display: inline-block; padding: 0.5rem 1rem; border-radius: 0.5rem; background: #18181b; color: #fff; text-decoration: none; font-size: 0.875rem; }
+    .btn { display: inline-block; padding: 0.5rem 1rem; border-radius: 0.5rem; background: #2563eb; color: #fff; text-decoration: none; font-size: 0.875rem; }
     table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e4e4e7; border-radius: 0.75rem; overflow: hidden; }
     th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #f4f4f5; font-size: 0.875rem; vertical-align: top; }
     th { background: #f4f4f5; font-weight: 600; }
@@ -81,11 +82,11 @@ function targetCards(active: DbTarget | null): string {
   return targets
     .map((target) => {
       const label = getDbTargetLabel(target);
-      const host = maskConnectionHost(target);
+      const envLabel = getDbTargetEnvLabel(target);
       const className = active === target ? "card active" : "card";
       return `<a class="${className}" href="/?target=${target}">
         <strong>${escapeHtml(label)}</strong>
-        <small>${escapeHtml(host)}</small>
+        <small>${escapeHtml(envLabel)}</small>
       </a>`;
     })
     .join("");
@@ -124,9 +125,9 @@ async function renderHome(target: DbTarget | null): Promise<string> {
   }
 
   return page(
-    "Receptoria DB",
+    "Receptoria — просмотр базы данных",
     `<p class="notice">Безопасный просмотр БД для Neon. Prisma Studio здесь не используется — он падает при загрузке связей (P1017).</p>
-     <h1>Просмотр базы данных</h1>
+     <h1>Receptoria — просмотр базы данных</h1>
      <p>Выберите локальную или рабочую БД, затем откройте нужную таблицу.</p>
      <div class="cards">${targetCards(target)}</div>
      ${errorHtml}
@@ -135,6 +136,14 @@ async function renderHome(target: DbTarget | null): Promise<string> {
 }
 
 async function renderTable(tableName: string, target: DbTarget): Promise<string> {
+  if (isSystemTable(tableName)) {
+    return page(
+      tableName,
+      `<p><a class="back" href="/?target=${target}">← Назад к списку таблиц</a></p>
+       <div class="error">Служебная таблица недоступна для просмотра</div>`,
+    );
+  }
+
   try {
     const rows = await fetchTableRows(target, tableName);
     const columns = rows.length > 0 ? Object.keys(rows[0]) : [];

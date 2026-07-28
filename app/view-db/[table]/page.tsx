@@ -4,6 +4,7 @@ import {
   fetchTableRows,
   getDbTargetLabel,
   isDbTarget,
+  isSystemTable,
 } from "@/lib/view-db";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,10 @@ export default async function ViewDbTablePage({
 
   const target = query.target;
   const tableName = decodeURIComponent(table);
+
+  if (isSystemTable(tableName)) {
+    notFound();
+  }
 
   let rows: Record<string, unknown>[] = [];
   let error: string | null = null;

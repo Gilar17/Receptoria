@@ -1,4 +1,4 @@
-import { withDb, resolveDatabaseUrl, type DbTarget } from "@/lib/db-client";
+import { withDb, type DbTarget } from "@/lib/db-client";
 
 export type { DbTarget };
 
@@ -13,6 +13,14 @@ export function getDbTargetLabel(target: DbTarget): string {
 
 export function isDbTarget(value: string | undefined): value is DbTarget {
   return value === "local" || value === "work";
+}
+
+export function isSystemTable(name: string): boolean {
+  return name.startsWith("_");
+}
+
+export function getDbTargetEnvLabel(target: DbTarget): string {
+  return target === "work" ? "Neon – DATABASE_URL" : "LOCAL_DATABASE_URL";
 }
 
 export type TableInfo = {
@@ -48,7 +56,13 @@ export async function listTables(target: DbTarget): Promise<TableInfo[]> {
         assertValidTableName(table.table_name);
       }
 
-      const union = tables
+      const userTables = tables.filter((table) => !isSystemTable(table.table_name));
+
+      if (userTables.length === 0) {
+        return [];
+      }
+
+      const union = userTables
         .map(
           (table) =>
             `SELECT '${table.table_name.replace(/'/g, "''")}' AS name, COUNT(*)::bigint AS count FROM "${table.table_name}"`,
@@ -75,6 +89,10 @@ export async function fetchTableRows(
 ): Promise<Record<string, unknown>[]> {
   assertValidTableName(tableName);
 
+  if (isSystemTable(tableName)) {
+    throw new Error("Служебная таблица недоступна для просмотра");
+  }
+
   return withDb(
     "fetchTableRows",
     async (prisma) => {
@@ -96,12 +114,4 @@ export async function fetchTableRows(
     },
     { target },
   );
-}
-
-export function maskConnectionHost(target: DbTarget): string {
-  try {
-    return new URL(resolveDatabaseUrl(target)).hostname;
-  } catch {
-    return "не настроено";
-  }
 }
