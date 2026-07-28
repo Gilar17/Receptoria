@@ -11,6 +11,8 @@
     "vercel-build": "prisma generate && prisma db push && prisma db seed && next build",
     "db:check": "tsx prisma/check-db.ts",
     "db:show": "tsx prisma/show-db.ts",
+    "db:copy:dry": "tsx scripts/copy-neon-to-local.ts --dry-run",
+    "db:copy:apply": "tsx scripts/copy-neon-to-local.ts --apply",
     "db:studio": "tsx scripts/studio.mjs",
     "view-db": "node scripts/view-db.mjs"
   },

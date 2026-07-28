@@ -31,7 +31,7 @@ export function isDbTarget(value: string | undefined): value is DbTarget {
 }
 
 export function getDbTargetEnvLabel(target: DbTarget): string {
-  return target === "work" ? "Neon – DATABASE_URL" : "LOCAL_DATABASE_URL";
+  return target === "work" ? "Neon – DATABASE_URL" : "LOCAL_DIRECT_URL";
 }
 
 export type TableInfo = {

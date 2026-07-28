@@ -17,13 +17,13 @@ function normalizeDatabaseUrl(raw: string): string {
 export function resolveDatabaseUrl(target: DbTarget = "work"): string {
   const raw =
     target === "local"
-      ? process.env.LOCAL_DATABASE_URL ?? process.env.LOCAL_DIRECT_URL
+      ? process.env.LOCAL_DIRECT_URL
       : process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 
   if (!raw) {
     if (target === "local") {
       throw new Error(
-        "Локальная БД не настроена. Добавьте LOCAL_DATABASE_URL в .env",
+        "Локальная БД не настроена. Добавьте LOCAL_DIRECT_URL в .env",
       );
     }
     throw new Error("DATABASE_URL или DIRECT_URL не задан");
