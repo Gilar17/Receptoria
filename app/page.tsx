@@ -1,11 +1,13 @@
-import { prisma } from "@/lib/prisma";
+import { withDb } from "@/lib/db-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const notes = await prisma.note.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+  const notes = await withDb("home-notes", (prisma) =>
+    prisma.note.findMany({
+      orderBy: { createdAt: "desc" },
+    }),
+  );
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-2xl flex-col gap-8 px-6 py-16">

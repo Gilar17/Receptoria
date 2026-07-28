@@ -11,8 +11,77 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum RecipeVisibility {
+  PRIVATE
+  PUBLIC
+}
+
 model Note {
   id        String   @id @default(uuid())
   title     String
   createdAt DateTime @default(now())
+  ownerId   String
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+
+  recipes Recipe[]
+  votes   Vote[]
+  notes   Note[]
+}
+
+model Recipe {
+  id          String           @id @default(cuid())
+  ownerId     String
+  title       String
+  content     String
+  description String?
+  categoryId  String
+  visibility  RecipeVisibility @default(PRIVATE)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  publishedAt DateTime?
+
+  owner    User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  votes    Vote[]
+  tags     Tag[]
+
+  @@index([ownerId, updatedAt])
+  @@index([visibility, createdAt])
+}
+
+model Category {
+  id       String @id @default(cuid())
+  category String
+
+  recipes Recipe[]
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  userId    String
+  recipeId  String
+  value     Int      @default(1)
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@index([recipeId])
+  @@index([userId])
+}
+
+model Tag {
+  id   String @id @default(cuid())
+  name String @unique
+
+  recipes Recipe[]
 }

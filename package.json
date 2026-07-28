@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && prisma db push && prisma db seed && next build"
+    "vercel-build": "prisma generate && prisma db push && prisma db seed && next build",
+    "db:check": "tsx prisma/check-db.ts",
+    "db:show": "tsx prisma/show-db.ts",
+    "db:studio": "tsx scripts/studio.mjs",
+    "view-db": "node scripts/view-db.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
