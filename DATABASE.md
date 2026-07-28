@@ -19,13 +19,4 @@ Vote — голос пользователя за публичный рецеп�
 - User: id (cuid), email unique, name optional, createdAt
 - Recipe: id, ownerId -> User, title, content, description optional, categoryId -> Category,
   visibility (PRIVATE|PUBLIC, default PRIVATE), createdAt, updatedAt, publishedAt nullable
-- Vote: id, userId -> User, recipeId-> Recipe, value int default 1, createdAt
-- Category: id, category
-- Ограничение: один пользователь может проголосовать за рецепт только один раз:
-  UNIQUE(userId, recipeId)
-- Индексы:
-  Recipe(ownerId, updatedAt)
-  Recipe(visibility, createdAt)
-  Vote(recipeId)
-  Vote(userId)
-- onDelete: Cascade для связей
+- Vote: id, userId -> User, recipeId-> Recipe, value int default 1, creatт

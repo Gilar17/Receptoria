@@ -13,8 +13,6 @@ type Counts = {
   recipeTagLinks: number;
 };
 
-type SourceData = Awaited<ReturnType<typeof readSourceData>>;
-
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 const LOCAL_DB_NAME = "receptoria";
 
@@ -199,7 +197,7 @@ function assertCountsMatch(neon: Counts, local: Counts): void {
   }
 }
 
-async function readSourceData(sourcePrisma: PrismaClient): Promise<SourceData> {
+async function readSourceData(sourcePrisma: PrismaClient) {
   const [users, categories, tags, notes, recipes, votes] = await Promise.all([
     sourcePrisma.user.findMany({
       orderBy: { createdAt: "asc" },
@@ -241,6 +239,8 @@ async function readSourceData(sourcePrisma: PrismaClient): Promise<SourceData> {
     recipeTagLinks,
   };
 }
+
+type SourceData = Awaited<ReturnType<typeof readSourceData>>;
 
 async function applyLocalData(
   targetPrisma: PrismaClient,
