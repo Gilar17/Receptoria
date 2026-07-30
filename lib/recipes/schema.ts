@@ -12,6 +12,7 @@ export const recipeFormSchema = z.object({
     .min(10, "Текст рецепта должен содержать не менее 10 символов")
     .max(20000, "Текст рецепта не должен превышать 20 000 символов"),
   isPublic: z.boolean(),
+  categoryId: z.string().trim().min(1, "Выберите категорию").optional(),
 });
 
 export type RecipeFormValues = z.infer<typeof recipeFormSchema>;
@@ -25,8 +26,14 @@ export const updateRecipeSchema = recipeFormSchema.extend({
   id: recipeIdSchema,
 });
 
+export const recipeListSectionSchema = z.enum(["mine", "public", "favorites"]);
+
 export const deleteRecipeSchema = z.object({
   id: recipeIdSchema,
+  page: z.coerce.number().int().min(1).optional().default(1),
+  q: z.string().optional().default(""),
+  category: z.string().optional().default(""),
+  listSection: recipeListSectionSchema.optional().default("mine"),
 });
 
 export const togglePublicSchema = z.object({

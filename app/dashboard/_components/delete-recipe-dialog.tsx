@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -14,6 +14,22 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { deleteRecipe } from "@/lib/recipes/actions";
+import {
+  buildRecipeListHref,
+  readRecipeListParams,
+} from "@/lib/recipes/url-params";
+
+type RecipeListSection = "mine" | "public" | "favorites";
+
+function getListSection(pathname: string): RecipeListSection {
+  if (pathname.startsWith("/dashboard/public")) {
+    return "public";
+  }
+  if (pathname.startsWith("/dashboard/favorites")) {
+    return "favorites";
+  }
+  return "mine";
+}
 
 type DeleteRecipeDialogProps = {
   open: boolean;
@@ -29,11 +45,21 @@ export function DeleteRecipeDialog({
   recipeTitle,
 }: DeleteRecipeDialogProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
     setDeleting(true);
-    const result = await deleteRecipe({ id: recipeId });
+    const { page, q, category, view } = readRecipeListParams(searchParams);
+
+    const result = await deleteRecipe({
+      id: recipeId,
+      page,
+      q,
+      category: category ?? "",
+      listSection: getListSection(pathname),
+    });
     setDeleting(false);
 
     if (!result.success) {
@@ -43,6 +69,21 @@ export function DeleteRecipeDialog({
 
     toast.success(result.message ?? "Рецепт удалён");
     onOpenChange(false);
+
+    const redirectPage = result.data?.redirectPage ?? page;
+
+    if (redirectPage !== page) {
+      router.push(
+        buildRecipeListHref(pathname, {
+          page: redirectPage,
+          q,
+          category,
+          view,
+        }),
+      );
+      return;
+    }
+
     router.refresh();
   };
 

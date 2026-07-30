@@ -19,21 +19,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-  createRecipe,
-  updateRecipe,
-} from "@/lib/recipes/actions";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { createRecipe, updateRecipe } from "@/lib/recipes/actions";
 import {
   recipeFormSchema,
   type RecipeFormValues,
 } from "@/lib/recipes/schema";
 import { isPublicVisibility } from "@/lib/recipes/helpers";
-import type { RecipeListItem } from "@/lib/recipes/queries";
+import type { CategoryOption, RecipeListItem } from "@/lib/recipes/queries";
 
 type RecipeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
   recipe?: RecipeListItem;
+  categories: CategoryOption[];
 };
 
 export function RecipeDialog({
@@ -41,14 +46,22 @@ export function RecipeDialog({
   onOpenChange,
   mode,
   recipe,
+  categories,
 }: RecipeDialogProps) {
   const router = useRouter();
+  const defaultCategoryId =
+    recipe?.categoryId ??
+    categories.find((c) => c.category === "Общее")?.id ??
+    categories[0]?.id ??
+    "";
+
   const form = useForm<RecipeFormValues>({
     resolver: zodResolver(recipeFormSchema),
     defaultValues: {
       title: "",
       content: "",
       isPublic: false,
+      categoryId: defaultCategoryId,
     },
   });
 
@@ -62,8 +75,12 @@ export function RecipeDialog({
         mode === "edit" && recipe
           ? isPublicVisibility(recipe.visibility)
           : false,
+      categoryId:
+        mode === "edit" && recipe
+          ? recipe.categoryId
+          : defaultCategoryId,
     });
-  }, [open, mode, recipe, form]);
+  }, [open, mode, recipe, form, defaultCategoryId]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     const result =
@@ -120,6 +137,32 @@ export function RecipeDialog({
                 {form.formState.errors.content.message}
               </p>
             ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="categoryId">Категория</Label>
+            <Controller
+              name="categoryId"
+              control={form.control}
+              render={({ field }) => (
+                <Select
+                  value={field.value ?? defaultCategoryId}
+                  onValueChange={field.onChange}
+                  disabled={submitting || categories.length === 0}
+                >
+                  <SelectTrigger id="categoryId">
+                    <SelectValue placeholder="Выберите категорию" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
 
           <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">

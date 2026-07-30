@@ -3,7 +3,7 @@ import Google from "next-auth/providers/google";
 
 /**
  * Edge-safe конфиг Auth.js без PrismaAdapter.
- * Используется в middleware для проверки сессии и редиректов.
+ * Используется в proxy для проверки сессии и редиректов.
  * Prisma Client здесь не подключается.
  */
 export const authConfig = {

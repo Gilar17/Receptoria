@@ -5,10 +5,11 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Bookmark,
-  CookingPot,
+  BookOpenText,
   Globe,
   History,
   Settings,
+  UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SignOutButton } from "@/app/dashboard/sign-out-button";
@@ -20,7 +21,8 @@ type DashboardUser = {
 };
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Мои рецепты", icon: CookingPot, exact: true },
+  { href: "/dashboard/profile", label: "Профиль", icon: UserRound },
+  { href: "/dashboard", label: "Мои рецепты", icon: BookOpenText, exact: true },
   { href: "/dashboard/public", label: "Публичные рецепты", icon: Globe },
   { href: "/dashboard/favorites", label: "Избранное", icon: Bookmark },
   { href: "/dashboard/history", label: "История", icon: History },

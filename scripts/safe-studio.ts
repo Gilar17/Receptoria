@@ -4,7 +4,6 @@ import { URL } from "node:url";
 import {
   fetchTablePage,
   formatCell,
-  getDbTargetEnvLabel,
   getDbTargetLabel,
   getTableColumns,
   isDbTarget,

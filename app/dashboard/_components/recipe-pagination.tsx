@@ -2,28 +2,25 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { buildRecipeListHref } from "@/lib/recipes/url-params";
+import type { RecipeViewMode } from "@/lib/recipes/helpers";
 
 type RecipePaginationProps = {
   page: number;
   totalPages: number;
   basePath: string;
   q?: string;
+  category?: string;
+  view?: RecipeViewMode;
 };
-
-function buildHref(basePath: string, page: number, q?: string) {
-  const params = new URLSearchParams();
-  params.set("page", String(page));
-  if (q?.trim()) {
-    params.set("q", q.trim());
-  }
-  return `${basePath}?${params.toString()}`;
-}
 
 export function RecipePagination({
   page,
   totalPages,
   basePath,
   q,
+  category,
+  view,
 }: RecipePaginationProps) {
   if (totalPages <= 1) {
     return null;
@@ -46,6 +43,9 @@ export function RecipePagination({
     items.push(current);
   }
 
+  const hrefFor = (targetPage: number) =>
+    buildRecipeListHref(basePath, { page: targetPage, q, category, view });
+
   return (
     <nav
       className="mt-8 flex flex-wrap items-center justify-center gap-2"
@@ -58,7 +58,7 @@ export function RecipePagination({
         disabled={page <= 1}
         className={cn(page <= 1 && "pointer-events-none opacity-50")}
       >
-        <Link href={buildHref(basePath, Math.max(1, page - 1), q)} aria-label="Назад">
+        <Link href={hrefFor(Math.max(1, page - 1))} aria-label="Назад">
           <ChevronLeft className="h-4 w-4" />
           Назад
         </Link>
@@ -76,7 +76,7 @@ export function RecipePagination({
             size="sm"
             asChild
           >
-            <Link href={buildHref(basePath, item, q)}>{item}</Link>
+            <Link href={hrefFor(item)}>{item}</Link>
           </Button>
         ),
       )}
@@ -89,7 +89,7 @@ export function RecipePagination({
         className={cn(page >= totalPages && "pointer-events-none opacity-50")}
       >
         <Link
-          href={buildHref(basePath, Math.min(totalPages, page + 1), q)}
+          href={hrefFor(Math.min(totalPages, page + 1))}
           aria-label="Вперёд"
         >
           Вперёд

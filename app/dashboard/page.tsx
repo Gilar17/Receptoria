@@ -1,41 +1,52 @@
-import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/app/dashboard/_components/dashboard-header";
 import { EmptyState } from "@/app/dashboard/_components/empty-state";
 import { RecipeCreateButton } from "@/app/dashboard/_components/recipe-create-button";
 import { RecipeList } from "@/app/dashboard/_components/recipe-list";
+import { RecipeListToolbar } from "@/app/dashboard/_components/recipe-list-toolbar";
 import { RecipePagination } from "@/app/dashboard/_components/recipe-pagination";
-import { RecipeSearch } from "@/app/dashboard/_components/recipe-search";
 import { requireAuth } from "@/lib/auth";
-import { getMyRecipes } from "@/lib/recipes/queries";
-import { parseSearchQuery } from "@/lib/recipes/helpers";
+import {
+  parseCategoryParam,
+  parseSearchQuery,
+  parseViewParam,
+} from "@/lib/recipes/helpers";
+import { getCategories, getMyRecipes } from "@/lib/recipes/queries";
 
 export const dynamic = "force-dynamic";
 
 type DashboardPageProps = {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    page?: string;
+    category?: string;
+    view?: string;
+  }>;
 };
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const session = await requireAuth();
   const params = await searchParams;
   const q = parseSearchQuery(params.q);
+  const view = parseViewParam(params.view);
+  const category = parseCategoryParam(params.category);
+
+  const categories = await getCategories();
   const data = await getMyRecipes(session.user.id, params);
 
-  const isSearch = Boolean(q);
+  const isSearch = Boolean(q) || Boolean(category);
   const isEmpty = data.total === 0;
 
   return (
     <>
       <DashboardHeader
         user={session.user}
-        sectionTitle="Мои рецепты"
+        title="Мои рецепты"
         showCreate
+        categories={categories}
       />
 
-      <Suspense fallback={null}>
-        <RecipeSearch />
-      </Suspense>
+      <RecipeListToolbar categories={categories} />
 
       {!isEmpty ? (
         <p className="mb-4 text-sm text-slate-500">
@@ -49,8 +60,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         ) : (
           <EmptyState
             title="У вас пока нет рецептов — создайте первый"
+            showRecipeIcon
             action={
-              <RecipeCreateButton>
+              <RecipeCreateButton categories={categories}>
                 <Button>Создать рецепт</Button>
               </RecipeCreateButton>
             }
@@ -58,12 +70,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         )
       ) : (
         <>
-          <RecipeList recipes={data.items} currentUserId={session.user.id} />
+          <RecipeList
+            recipes={data.items}
+            currentUserId={session.user.id}
+            categories={categories}
+            view={view}
+          />
           <RecipePagination
             page={data.page}
             totalPages={data.totalPages}
             basePath="/dashboard"
             q={q}
+            category={category}
+            view={view}
           />
         </>
       )}

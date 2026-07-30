@@ -1,11 +1,16 @@
 "use server";
 
+import { RecipeVisibility } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { RECIPES_PAGE_SIZE } from "@/lib/recipes/constants";
 import {
+  buildSearchWhere,
   normalizePageAfterDelete,
+  parseCategoryParam,
+  parsePageParam,
+  parseSearchQuery,
   visibilityFromIsPublic,
 } from "@/lib/recipes/helpers";
 import {
@@ -62,7 +67,7 @@ export async function createRecipe(
   }
 
   try {
-    const categoryId = await getDefaultCategoryId();
+    const categoryId = parsed.data.categoryId ?? (await getDefaultCategoryId());
     const visibility = visibilityFromIsPublic(parsed.data.isPublic);
 
     const recipe = await prisma.recipe.create({
@@ -112,12 +117,14 @@ export async function updateRecipe(
 
   try {
     const visibility = visibilityFromIsPublic(parsed.data.isPublic);
+    const categoryId = parsed.data.categoryId ?? existing.categoryId;
 
     await prisma.recipe.update({
       where: { id: parsed.data.id },
       data: {
         title: parsed.data.title,
         content: parsed.data.content,
+        categoryId,
         visibility,
         publishedAt: parsed.data.isPublic ? new Date() : null,
       },
@@ -159,9 +166,35 @@ export async function deleteRecipe(
   try {
     await prisma.recipe.delete({ where: { id: parsed.data.id } });
 
-    const remaining = await prisma.recipe.count({ where: { ownerId: userId } });
+    const currentPage = parsePageParam(String(parsed.data.page));
+    const q = parseSearchQuery(parsed.data.q);
+    const categoryId = parseCategoryParam(parsed.data.category || undefined);
+    const searchWhere = buildSearchWhere(q);
+    const categoryWhere = categoryId ? { categoryId } : {};
+
+    const where =
+      parsed.data.listSection === "public"
+        ? {
+            visibility: RecipeVisibility.PUBLIC,
+            ...categoryWhere,
+            ...(searchWhere ?? {}),
+          }
+        : parsed.data.listSection === "favorites"
+          ? {
+              ownerId: userId,
+              isFavorite: true,
+              ...categoryWhere,
+              ...(searchWhere ?? {}),
+            }
+          : {
+              ownerId: userId,
+              ...categoryWhere,
+              ...(searchWhere ?? {}),
+            };
+
+    const remaining = await prisma.recipe.count({ where });
     const redirectPage = normalizePageAfterDelete(
-      1,
+      currentPage,
       remaining,
       RECIPES_PAGE_SIZE,
     );

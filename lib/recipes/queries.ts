@@ -1,16 +1,23 @@
 import { prisma } from "@/lib/prisma";
+import { withDbRetry } from "@/lib/db-client";
 import { DEFAULT_CATEGORY_NAME, RECIPES_PAGE_SIZE } from "@/lib/recipes/constants";
 import {
   buildSearchWhere,
-  normalizePageAfterDelete,
+  parseCategoryParam,
   parsePageParam,
   parseSearchQuery,
 } from "@/lib/recipes/helpers";
-import { RecipeVisibility } from "@prisma/client";
+import { RecipeVisibility, type Prisma } from "@prisma/client";
 
-type ListParams = {
+export type ListParams = {
   q?: string;
   page?: string;
+  category?: string;
+};
+
+export type CategoryOption = {
+  id: string;
+  category: string;
 };
 
 export type RecipeListItem = {
@@ -22,6 +29,11 @@ export type RecipeListItem = {
   createdAt: Date;
   updatedAt: Date;
   ownerId: string;
+  categoryId: string;
+  category: {
+    id: string;
+    category: string;
+  };
   owner: {
     name: string | null;
     image: string | null;
@@ -36,20 +48,69 @@ export type PaginatedRecipes = {
   totalPages: number;
 };
 
-async function getDefaultCategoryId(): Promise<string> {
-  const existing = await prisma.category.findFirst({
-    where: { category: DEFAULT_CATEGORY_NAME },
+const recipeSelect = {
+  id: true,
+  title: true,
+  content: true,
+  visibility: true,
+  isFavorite: true,
+  createdAt: true,
+  updatedAt: true,
+  ownerId: true,
+  categoryId: true,
+  category: { select: { id: true, category: true } },
+  owner: { select: { name: true, image: true } },
+} as const;
+
+function buildCategoryWhere(categoryId: string | undefined) {
+  if (!categoryId) {
+    return {};
+  }
+  return { categoryId };
+}
+
+type RecipeWhereInput = Prisma.RecipeWhereInput;
+
+async function fetchRecipeListPage(where: RecipeWhereInput, page: number) {
+  return withDbRetry("recipe.listPage", async () => {
+    const total = await prisma.recipe.count({ where });
+    const items = await prisma.recipe.findMany({
+      where,
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+      skip: (page - 1) * RECIPES_PAGE_SIZE,
+      take: RECIPES_PAGE_SIZE,
+      select: recipeSelect,
+    });
+
+    return { total, items };
   });
+}
+
+async function getDefaultCategoryId(): Promise<string> {
+  const existing = await withDbRetry("category.findDefault", () =>
+    prisma.category.findFirst({
+      where: { category: DEFAULT_CATEGORY_NAME },
+    }),
+  );
 
   if (existing) {
     return existing.id;
   }
 
-  const created = await prisma.category.create({
-    data: { category: DEFAULT_CATEGORY_NAME },
-  });
+  return withDbRetry("category.createDefault", () =>
+    prisma.category.create({
+      data: { category: DEFAULT_CATEGORY_NAME },
+    }),
+  ).then((created) => created.id);
+}
 
-  return created.id;
+export async function getCategories(): Promise<CategoryOption[]> {
+  return withDbRetry("category.findMany", () =>
+    prisma.category.findMany({
+      orderBy: { category: "asc" },
+      select: { id: true, category: true },
+    }),
+  );
 }
 
 export async function getMyRecipes(
@@ -58,32 +119,15 @@ export async function getMyRecipes(
 ): Promise<PaginatedRecipes> {
   const q = parseSearchQuery(params.q);
   const page = parsePageParam(params.page);
+  const categoryId = parseCategoryParam(params.category);
 
   const where = {
     ownerId,
+    ...buildCategoryWhere(categoryId),
     ...(buildSearchWhere(q) ?? {}),
   };
 
-  const [total, items] = await Promise.all([
-    prisma.recipe.count({ where }),
-    prisma.recipe.findMany({
-      where,
-      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-      skip: (page - 1) * RECIPES_PAGE_SIZE,
-      take: RECIPES_PAGE_SIZE,
-      select: {
-        id: true,
-        title: true,
-        content: true,
-        visibility: true,
-        isFavorite: true,
-        createdAt: true,
-        updatedAt: true,
-        ownerId: true,
-        owner: { select: { name: true, image: true } },
-      },
-    }),
-  ]);
+  const { total, items } = await fetchRecipeListPage(where, page);
 
   const totalPages = Math.max(1, Math.ceil(total / RECIPES_PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -106,32 +150,15 @@ export async function getPublicRecipesPaginated(
 ): Promise<PaginatedRecipes> {
   const q = parseSearchQuery(params.q);
   const page = parsePageParam(params.page);
+  const categoryId = parseCategoryParam(params.category);
 
   const where = {
     visibility: RecipeVisibility.PUBLIC,
+    ...buildCategoryWhere(categoryId),
     ...(buildSearchWhere(q) ?? {}),
   };
 
-  const [total, items] = await Promise.all([
-    prisma.recipe.count({ where }),
-    prisma.recipe.findMany({
-      where,
-      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-      skip: (page - 1) * RECIPES_PAGE_SIZE,
-      take: RECIPES_PAGE_SIZE,
-      select: {
-        id: true,
-        title: true,
-        content: true,
-        visibility: true,
-        isFavorite: true,
-        createdAt: true,
-        updatedAt: true,
-        ownerId: true,
-        owner: { select: { name: true, image: true } },
-      },
-    }),
-  ]);
+  const { total, items } = await fetchRecipeListPage(where, page);
 
   const totalPages = Math.max(1, Math.ceil(total / RECIPES_PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -155,33 +182,16 @@ export async function getFavoriteRecipes(
 ): Promise<PaginatedRecipes> {
   const q = parseSearchQuery(params.q);
   const page = parsePageParam(params.page);
+  const categoryId = parseCategoryParam(params.category);
 
   const where = {
     ownerId,
     isFavorite: true,
+    ...buildCategoryWhere(categoryId),
     ...(buildSearchWhere(q) ?? {}),
   };
 
-  const [total, items] = await Promise.all([
-    prisma.recipe.count({ where }),
-    prisma.recipe.findMany({
-      where,
-      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-      skip: (page - 1) * RECIPES_PAGE_SIZE,
-      take: RECIPES_PAGE_SIZE,
-      select: {
-        id: true,
-        title: true,
-        content: true,
-        visibility: true,
-        isFavorite: true,
-        createdAt: true,
-        updatedAt: true,
-        ownerId: true,
-        owner: { select: { name: true, image: true } },
-      },
-    }),
-  ]);
+  const { total, items } = await fetchRecipeListPage(where, page);
 
   const totalPages = Math.max(1, Math.ceil(total / RECIPES_PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -200,11 +210,13 @@ export async function getFavoriteRecipes(
 }
 
 export async function getRecipeByIdForOwner(recipeId: string, ownerId: string) {
-  const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } });
+  const recipe = await withDbRetry("recipe.findById", () =>
+    prisma.recipe.findUnique({ where: { id: recipeId } }),
+  );
   if (!recipe || recipe.ownerId !== ownerId) {
     return null;
   }
   return recipe;
 }
 
-export { getDefaultCategoryId, normalizePageAfterDelete };
+export { getDefaultCategoryId };

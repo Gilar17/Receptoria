@@ -21,6 +21,25 @@ export function parseSearchQuery(raw: string | undefined): string {
   return raw?.trim() ?? "";
 }
 
+export type RecipeViewMode = "cards" | "table";
+
+export function parseViewParam(raw: string | undefined): RecipeViewMode {
+  return raw === "table" ? "table" : "cards";
+}
+
+export function parseCategoryParam(raw: string | undefined): string | undefined {
+  const value = raw?.trim();
+  return value ? value : undefined;
+}
+
+export function formatRecipeDate(date: Date): string {
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
 export function buildSearchWhere(q: string) {
   if (!q) {
     return undefined;

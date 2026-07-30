@@ -9,7 +9,7 @@ export default async function HistoryPage() {
 
   return (
     <>
-      <DashboardHeader user={session.user} sectionTitle="История" />
+      <DashboardHeader user={session.user} title="История" />
       <EmptyState
         title="История"
         description="История появится позже."

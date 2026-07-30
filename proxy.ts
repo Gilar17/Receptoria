@@ -5,7 +5,7 @@ import { authConfig } from "@/auth.config";
 const PROTECTED_PREFIXES = ["/dashboard"];
 
 /**
- * Middleware Auth.js (без PrismaAdapter — только cookie-сессия и редиректы).
+ * Proxy Auth.js (без PrismaAdapter — только cookie-сессия и редиректы).
  * Окончательная проверка доступа к данным — в server components / actions через auth().
  */
 const { auth } = NextAuth(authConfig);

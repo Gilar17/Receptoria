@@ -1,62 +1,22 @@
 import { PrismaClient } from "@prisma/client";
-import { isRetryableDbError, resolveDatabaseUrl } from "@/lib/db-client";
+import { resolveAppDatabaseUrl } from "@/lib/db-client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
-  prismaBase: PrismaClient | undefined;
 };
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/** Базовый клиент — для PrismaAdapter (требует PrismaClient). */
-function createBaseClient(): PrismaClient {
+function createPrismaClient(): PrismaClient {
   return new PrismaClient({
-    datasources: { db: { url: resolveDatabaseUrl("work") } },
+    datasources: { db: { url: resolveAppDatabaseUrl() } },
   });
 }
 
-/** Клиент с retry при P1017/P1001/P1002 — Neon часто обрывает соединение. */
-function createResilientClient(base: PrismaClient): PrismaClient {
-  return base.$extends({
-    query: {
-      $allModels: {
-        async $allOperations({ args, query }) {
-          let lastError: unknown;
+/** Один singleton PrismaClient на процесс (globalThis в development). */
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-          for (let attempt = 1; attempt <= 5; attempt += 1) {
-            try {
-              return await query(args);
-            } catch (error) {
-              lastError = error;
-
-              if (attempt < 5 && isRetryableDbError(error)) {
-                await base.$disconnect().catch(() => undefined);
-                await base.$connect().catch(() => undefined);
-                await sleep(400 * attempt);
-                continue;
-              }
-
-              throw error;
-            }
-          }
-
-          throw lastError;
-        },
-      },
-    },
-  }) as unknown as PrismaClient;
-}
-
-const baseClient = globalForPrisma.prismaBase ?? createBaseClient();
-
-export const prisma = globalForPrisma.prisma ?? createResilientClient(baseClient);
-
-/** Для Auth.js PrismaAdapter — тот же resilient-клиент. */
+/** Для Auth.js PrismaAdapter — тот же singleton. */
 export const authPrisma = prisma;
 
 if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prismaBase = baseClient;
   globalForPrisma.prisma = prisma;
 }

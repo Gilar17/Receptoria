@@ -1,7 +1,6 @@
 "use client";
 
 import { useOptimistic, useState, useTransition } from "react";
-import Image from "next/image";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
@@ -14,6 +13,14 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -28,30 +35,30 @@ import {
 import { formatRecipeDate, isPublicVisibility } from "@/lib/recipes/helpers";
 import type { CategoryOption, RecipeListItem } from "@/lib/recipes/queries";
 
-type RecipeCardProps = {
-  recipe: RecipeListItem;
+type RecipeTableProps = {
+  recipes: RecipeListItem[];
   currentUserId: string | null;
   showAuthor?: boolean;
   categories: CategoryOption[];
 };
 
-type OptimisticRecipe = RecipeListItem & {
-  pendingFavorite?: boolean;
-  pendingPublic?: boolean;
-};
-
-export function RecipeCard({
+function RecipeTableRow({
   recipe,
   currentUserId,
-  showAuthor = false,
+  showAuthor,
   categories,
-}: RecipeCardProps) {
+}: {
+  recipe: RecipeListItem;
+  currentUserId: string | null;
+  showAuthor?: boolean;
+  categories: CategoryOption[];
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [optimisticRecipe, setOptimisticRecipe] = useOptimistic<
-    OptimisticRecipe,
-    Partial<OptimisticRecipe>
-  >(recipe, (state, update) => ({ ...state, ...update }));
+  const [optimisticRecipe, setOptimisticRecipe] = useOptimistic(
+    recipe,
+    (state, update: Partial<RecipeListItem>) => ({ ...state, ...update }),
+  );
 
   const [viewOpen, setViewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -59,14 +66,16 @@ export function RecipeCard({
 
   const isOwner = currentUserId === recipe.ownerId;
   const isPublic = isPublicVisibility(optimisticRecipe.visibility);
-  const categoryName = optimisticRecipe.category?.category ?? "Без категории";
+  const preview =
+    optimisticRecipe.content.length > 80
+      ? `${optimisticRecipe.content.slice(0, 80).trim()}…`
+      : optimisticRecipe.content;
 
   const handleToggleFavorite = () => {
     if (!isOwner) return;
-
     const previous = optimisticRecipe.isFavorite;
     startTransition(async () => {
-      setOptimisticRecipe({ isFavorite: !previous, pendingFavorite: true });
+      setOptimisticRecipe({ isFavorite: !previous });
       const result = await toggleRecipeFavorite({ id: recipe.id });
       if (!result.success) {
         setOptimisticRecipe({ isFavorite: previous });
@@ -79,13 +88,9 @@ export function RecipeCard({
 
   const handleTogglePublic = (checked: boolean) => {
     if (!isOwner) return;
-
     const previous = isPublicVisibility(optimisticRecipe.visibility);
     startTransition(async () => {
-      setOptimisticRecipe({
-        visibility: checked ? "PUBLIC" : "PRIVATE",
-        pendingPublic: true,
-      });
+      setOptimisticRecipe({ visibility: checked ? "PUBLIC" : "PRIVATE" });
       const result = await toggleRecipePublic({
         id: recipe.id,
         isPublic: checked,
@@ -101,26 +106,16 @@ export function RecipeCard({
 
   return (
     <>
-      <article className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 items-start gap-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-700">
-              <BookOpenText className="h-4 w-4" />
-            </div>
-            <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">
-              {optimisticRecipe.title}
-            </h3>
-          </div>
+      <TableRow>
+        <TableCell className="w-10">
           {isOwner ? (
             <button
               type="button"
               onClick={handleToggleFavorite}
               disabled={isPending}
-              className="shrink-0 rounded-md p-1 text-slate-400 transition hover:text-amber-500"
+              className="rounded-md p-1 text-slate-400 hover:text-amber-500"
               aria-label={
-                optimisticRecipe.isFavorite
-                  ? "Убрать из избранного"
-                  : "Добавить в избранное"
+                optimisticRecipe.isFavorite ? "Убрать из избранного" : "В избранное"
               }
             >
               <Star
@@ -132,20 +127,26 @@ export function RecipeCard({
               />
             </button>
           ) : null}
-        </div>
-
-        <p className="mt-2 line-clamp-3 flex-1 text-sm text-slate-500">
-          {optimisticRecipe.content}
-        </p>
-
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        </TableCell>
+        <TableCell className="min-w-[160px] font-medium">
+          <div className="flex items-center gap-2">
+            <BookOpenText className="h-4 w-4 shrink-0 text-sky-600" />
+            <span className="line-clamp-2">{optimisticRecipe.title}</span>
+          </div>
+        </TableCell>
+        <TableCell className="min-w-[180px] text-sm text-slate-500">
+          {preview}
+        </TableCell>
+        <TableCell>
           <Badge variant="secondary" className="gap-1 font-normal">
             <Tag className="h-3 w-3" />
-            {categoryName}
+            {optimisticRecipe.category?.category ?? "Без категории"}
           </Badge>
-          <span className="text-slate-400">
-            {formatRecipeDate(optimisticRecipe.updatedAt)}
-          </span>
+        </TableCell>
+        <TableCell className="whitespace-nowrap text-xs text-slate-500">
+          {formatRecipeDate(optimisticRecipe.updatedAt)}
+        </TableCell>
+        <TableCell>
           <Badge variant="outline" className="gap-1 font-normal">
             {isPublic ? (
               <>
@@ -159,74 +160,52 @@ export function RecipeCard({
               </>
             )}
           </Badge>
-        </div>
-
-        {showAuthor ? (
-          <div className="mt-2 flex items-center gap-2 text-xs text-slate-600">
-            {recipe.owner.image ? (
-              <Image
-                src={recipe.owner.image}
-                alt={recipe.owner.name ?? "Автор"}
-                width={20}
-                height={20}
-                className="rounded-full"
-              />
-            ) : (
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-[10px] font-medium">
-                {(recipe.owner.name?.[0] ?? "A").toUpperCase()}
-              </div>
-            )}
-            <span>{recipe.owner.name ?? "Автор"}</span>
-          </div>
-        ) : null}
-
-        <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 px-2.5 text-xs"
-            onClick={() => setViewOpen(true)}
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Просмотреть
-          </Button>
-
-          {isOwner ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 px-2.5 text-xs"
-                onClick={() => setEditOpen(true)}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Редактировать
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 px-2.5 text-xs"
-                onClick={() => setDeleteOpen(true)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Удалить
-              </Button>
-              <div className="ml-auto flex items-center gap-1.5">
-                <span className="text-[11px] text-slate-500">Публичный</span>
+        </TableCell>
+        <TableCell>
+          <div className="flex flex-wrap items-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              title="Просмотреть"
+              onClick={() => setViewOpen(true)}
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </Button>
+            {isOwner ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Редактировать"
+                  onClick={() => setEditOpen(true)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Удалить"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
                 <Switch
                   checked={isPublic}
                   onCheckedChange={handleTogglePublic}
                   disabled={isPending}
-                  aria-label="Переключить публичность"
+                  aria-label="Публичность"
                 />
-              </div>
-            </>
-          ) : null}
-        </div>
-      </article>
+              </>
+            ) : null}
+          </div>
+        </TableCell>
+      </TableRow>
 
       <RecipeViewDialog
         open={viewOpen}
@@ -261,5 +240,41 @@ export function RecipeCard({
         </>
       ) : null}
     </>
+  );
+}
+
+export function RecipeTable({
+  recipes,
+  currentUserId,
+  showAuthor = false,
+  categories,
+}: RecipeTableProps) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-10" />
+            <TableHead>Название</TableHead>
+            <TableHead>Описание</TableHead>
+            <TableHead>Категория</TableHead>
+            <TableHead>Обновлено</TableHead>
+            <TableHead>Статус</TableHead>
+            <TableHead>Действия</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {recipes.map((recipe) => (
+            <RecipeTableRow
+              key={recipe.id}
+              recipe={recipe}
+              currentUserId={currentUserId}
+              showAuthor={showAuthor}
+              categories={categories}
+            />
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

@@ -9,7 +9,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <DashboardHeader user={session.user} sectionTitle="Настройки" />
+      <DashboardHeader user={session.user} title="Настройки" />
       <EmptyState
         title="Настройки"
         description="Настройки появятся позже."
