@@ -10,6 +10,8 @@
     "postinstall": "prisma generate",
     "vercel-build": "prisma generate && prisma db push && prisma db seed && next build",
     "db:check": "tsx prisma/check-db.ts",
+    "db:migrate:deploy": "tsx scripts/migrate-neon.ts deploy",
+    "db:migrate:status": "tsx scripts/migrate-neon.ts status",
     "db:show": "tsx prisma/show-db.ts",
     "db:copy:dry": "tsx scripts/copy-neon-to-local.ts --dry-run",
     "db:copy:apply": "tsx scripts/copy-neon-to-local.ts --apply",

@@ -1,25 +1,28 @@
 import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
+import { authPrisma } from "@/lib/prisma";
 import { authConfig } from "@/auth.config";
 
 /**
  * Полная конфигурация Auth.js (NextAuth v5) для server-side.
  *
  * - PrismaAdapter: пользователь создаётся в БД при первом входе через Google.
- * - session.strategy = "database": server-side сессии в таблице Session.
+ * - session.strategy = "jwt": cookie-сессия для middleware (Edge) + user.id в token.
  * - session.user.id: стабильный User.id для ownerId рецептов.
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  adapter: PrismaAdapter(prisma),
-  session: {
-    strategy: "database",
-  },
+  adapter: PrismaAdapter(authPrisma),
   callbacks: {
-    session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
+    jwt({ token, user }) {
+      if (user?.id) {
+        token.sub = user.id;
+      }
+      return token;
+    },
+    session({ session, token }) {
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
       }
       return session;
     },
