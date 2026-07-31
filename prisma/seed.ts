@@ -17,30 +17,30 @@ async function main() {
 
   await prisma.note.upsert({
     where: { id: "11111111-1111-4111-8111-111111111111" },
-    update: { title: "Первая заметка Receptoria" },
+    update: { content: "Первая заметка Receptoria" },
     create: {
       id: "11111111-1111-4111-8111-111111111111",
-      title: "Первая заметка Receptoria",
+      content: "Первая заметка Receptoria",
       ownerId: SEED_USER_ID,
     },
   });
 
   await prisma.note.upsert({
     where: { id: "22222222-2222-4222-8222-222222222222" },
-    update: { title: "Идея для нового рецепта" },
+    update: { content: "Идея для нового рецепта" },
     create: {
       id: "22222222-2222-4222-8222-222222222222",
-      title: "Идея для нового рецепта",
+      content: "Идея для нового рецепта",
       ownerId: SEED_USER_ID,
     },
   });
 
   await prisma.note.upsert({
     where: { id: "33333333-3333-4333-8333-333333333333" },
-    update: { title: "Список ингредиентов на неделю" },
+    update: { content: "Список ингредиентов на неделю" },
     create: {
       id: "33333333-3333-4333-8333-333333333333",
-      title: "Список ингредиентов на неделю",
+      content: "Список ингредиентов на неделю",
       ownerId: SEED_USER_ID,
     },
   });

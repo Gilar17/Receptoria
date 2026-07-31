@@ -61,11 +61,15 @@ model VerificationToken {
 
 model Note {
   id        String   @id @default(uuid())
-  title     String
-  createdAt DateTime @default(now())
+  content   String
   ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([createdAt])
 }
 
 model User {
@@ -76,13 +80,13 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
 
-  accounts    Account[]
-  sessions    Session[]
-  recipes     Recipe[]
-  votes       Vote[]
-  recipeLikes RecipeLike[]
+  accounts        Account[]
+  sessions        Session[]
+  recipes         Recipe[]
+  votes           Vote[]
+  recipeLikes     RecipeLike[]
   recipeFavorites RecipeFavorite[]
-  notes       Note[]
+  notes           Note[]
 }
 
 model Recipe {
@@ -98,12 +102,12 @@ model Recipe {
   updatedAt   DateTime         @updatedAt
   publishedAt DateTime?
 
-  owner    User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  category Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  votes    Vote[]
-  likes    RecipeLike[]
+  owner     User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category  Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  votes     Vote[]
+  likes     RecipeLike[]
   favorites RecipeFavorite[]
-  tags     Tag[]
+  tags      Tag[]
 
   @@index([ownerId, updatedAt])
   @@index([ownerId, createdAt])

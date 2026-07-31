@@ -34,7 +34,7 @@ export default async function Home() {
           <ul className="divide-y divide-zinc-200 border border-zinc-200">
             {notes.map((note) => (
               <li key={note.id} className="flex flex-col gap-1 px-4 py-3">
-                <span className="font-medium text-zinc-900">{note.title}</span>
+                <span className="font-medium text-zinc-900">{note.content}</span>
                 <span className="text-sm text-zinc-500">
                   {note.createdAt.toLocaleString("ru-RU")}
                 </span>

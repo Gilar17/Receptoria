@@ -10,7 +10,7 @@ async function main() {
 
   const notes = await withDb("notes", (prisma) =>
     prisma.note.findMany({
-      select: { id: true, title: true, ownerId: true },
+      select: { id: true, content: true, ownerId: true },
       orderBy: { createdAt: "asc" },
     }),
   );
@@ -36,7 +36,7 @@ async function main() {
 
   console.log(`\nNote (${notes.length}):`);
   for (const note of notes) {
-    console.log(`  ${note.id} | ownerId=${note.ownerId} | ${note.title}`);
+    console.log(`  ${note.id} | ownerId=${note.ownerId} | ${note.content}`);
   }
 
   console.log(`\nRecipe (${recipes.length}):`);

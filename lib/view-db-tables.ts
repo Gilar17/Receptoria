@@ -46,9 +46,10 @@ export const VIEW_DB_TABLES: Record<ViewDbTableName, TableConfig> = {
     orderBy: { createdAt: "asc" },
     fields: [
       { name: "id", label: "ID", type: "string", readOnlyOnCreate: true, readOnlyOnEdit: true },
-      { name: "title", label: "TITLE", type: "string", required: true },
+      { name: "content", label: "CONTENT", type: "string", required: true },
       { name: "ownerId", label: "OWNERID", type: "string", required: true },
       { name: "createdAt", label: "CREATEDAT", type: "datetime", readOnlyOnCreate: true, readOnlyOnEdit: true },
+      { name: "updatedAt", label: "UPDATEDAT", type: "datetime", readOnlyOnCreate: true, readOnlyOnEdit: true },
     ],
   },
   Category: {

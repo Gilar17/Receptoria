@@ -300,8 +300,9 @@ async function applyLocalData(
       await tx.note.create({
         data: {
           id: note.id,
-          title: note.title,
+          content: note.content,
           createdAt: note.createdAt,
+          updatedAt: note.updatedAt,
           ownerId: note.ownerId,
         },
       });
