@@ -50,6 +50,7 @@ export default async function FavoritesPage({ searchParams }: FavoritesPageProps
             recipes={data.items}
             currentUserId={session.user.id}
             showAuthor
+            showLikes
             categories={categories}
             view={view}
           />

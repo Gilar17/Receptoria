@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { LikeButton } from "@/components/recipes/LikeButton";
+import { CopyRecipeButton } from "@/app/dashboard/_components/copy-recipe-button";
 import { DeleteRecipeDialog } from "@/app/dashboard/_components/delete-recipe-dialog";
 import { RecipeDialog } from "@/app/dashboard/_components/recipe-dialog";
 import { RecipePublicToggle } from "@/app/dashboard/_components/recipe-public-toggle";
@@ -174,6 +175,11 @@ function RecipeTableRow({
               </TooltipTrigger>
               <TooltipContent side="top">Открыть</TooltipContent>
             </Tooltip>
+            <CopyRecipeButton
+              title={optimisticRecipe.title}
+              categoryName={categoryName}
+              content={optimisticRecipe.content}
+            />
             {isOwner ? (
               <>
                 <Tooltip>

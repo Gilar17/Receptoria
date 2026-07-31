@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { LikeButton } from "@/components/recipes/LikeButton";
+import { CopyRecipeButton } from "@/app/dashboard/_components/copy-recipe-button";
 import { DeleteRecipeDialog } from "@/app/dashboard/_components/delete-recipe-dialog";
 import { RecipeDialog } from "@/app/dashboard/_components/recipe-dialog";
 import { RecipePublicToggle } from "@/app/dashboard/_components/recipe-public-toggle";
@@ -155,6 +156,11 @@ export function RecipeCard({
           <span className="text-slate-400">
             {formatRecipeDate(optimisticRecipe.updatedAt)}
           </span>
+          <CopyRecipeButton
+            title={optimisticRecipe.title}
+            categoryName={categoryName}
+            content={optimisticRecipe.content}
+          />
           {showLikes && isOwner ? (
             <LikeButton
               recipeId={recipe.id}

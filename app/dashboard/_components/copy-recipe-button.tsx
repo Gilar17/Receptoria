@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -45,12 +46,24 @@ export function CopyRecipeButton({
   content,
   className,
 }: CopyRecipeButtonProps) {
-  const handleCopy = async () => {
-    const ok = await copyRecipeToClipboard({ title, categoryName, content });
-    if (ok) {
-      toast.success("Рецепт скопирован");
-    } else {
-      toast.error("Не удалось скопировать рецепт");
+  const [copying, setCopying] = useState(false);
+
+  const handleCopy = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (copying) return;
+
+    setCopying(true);
+    try {
+      const ok = await copyRecipeToClipboard({ title, categoryName, content });
+      if (ok) {
+        toast.success("Рецепт скопирован");
+      } else {
+        toast.error("Не удалось скопировать рецепт");
+      }
+    } finally {
+      setCopying(false);
     }
   };
 
@@ -60,8 +73,9 @@ export function CopyRecipeButton({
         <button
           type="button"
           onClick={handleCopy}
+          disabled={copying}
           className={cn(
-            "rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+            "rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 active:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50",
             className,
           )}
           aria-label="Копировать рецепт"

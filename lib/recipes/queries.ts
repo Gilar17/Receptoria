@@ -77,6 +77,50 @@ function buildCategoryWhere(categoryId: string | undefined) {
 
 type RecipeWhereInput = Prisma.RecipeWhereInput;
 
+async function fetchRecipeListPageWithLikes(
+  where: RecipeWhereInput,
+  page: number,
+  currentUserId: string,
+  orderBy: Prisma.RecipeOrderByWithRelationInput[] = [
+    { updatedAt: "desc" },
+    { createdAt: "desc" },
+  ],
+) {
+  return withDbRetry("recipe.listPageWithLikes", async () => {
+    const total = await prisma.recipe.count({ where });
+    const rows = await prisma.recipe.findMany({
+      where,
+      orderBy,
+      skip: (page - 1) * RECIPES_PAGE_SIZE,
+      take: RECIPES_PAGE_SIZE,
+      select: {
+        ...recipeSelect,
+        _count: { select: { likes: true } },
+        likes: {
+          where: { userId: currentUserId },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+
+    const items: RecipeListItem[] = rows.map((row) => {
+      const { _count, likes, ...recipe } = row as typeof row & {
+        _count: { likes: number };
+        likes: { id: string }[];
+      };
+
+      return {
+        ...recipe,
+        likesCount: _count.likes,
+        likedByMe: likes.length > 0,
+      };
+    });
+
+    return { total, items };
+  });
+}
+
 async function fetchRecipeListPage(
   where: RecipeWhereInput,
   page: number,
@@ -284,7 +328,11 @@ export async function getFavoriteRecipes(
     ...(buildSearchWhere(q) ?? {}),
   };
 
-  const { total, items } = await fetchRecipeListPage(where, page);
+  const { total, items } = await fetchRecipeListPageWithLikes(
+    where,
+    page,
+    userId,
+  );
 
   const itemsWithFavoriteFlag = items.map((item) => ({
     ...item,
