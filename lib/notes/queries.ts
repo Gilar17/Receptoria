@@ -5,7 +5,6 @@ export type NoteListItem = {
   id: string;
   content: string;
   createdAt: Date;
-  updatedAt: Date;
   ownerId: string;
 };
 
@@ -18,7 +17,6 @@ export async function getNotesForUser(ownerId: string): Promise<NoteListItem[]> 
         id: true,
         content: true,
         createdAt: true,
-        updatedAt: true,
         ownerId: true,
       },
     }),

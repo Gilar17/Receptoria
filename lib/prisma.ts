@@ -11,12 +11,12 @@ function createPrismaClient(): PrismaClient {
   });
 }
 
-/** Один singleton PrismaClient на процесс (globalThis в development). */
+/** Один singleton PrismaClient на процесс (важно для Vercel warm instances). */
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 /** Для Auth.js PrismaAdapter — тот же singleton. */
 export const authPrisma = prisma;
 
-if (process.env.NODE_ENV !== "production") {
+if (!globalForPrisma.prisma) {
   globalForPrisma.prisma = prisma;
 }

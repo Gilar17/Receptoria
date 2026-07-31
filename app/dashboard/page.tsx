@@ -31,8 +31,24 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const view = parseViewParam(params.view);
   const category = parseCategoryParam(params.category);
 
-  const categories = await getCategories();
-  const data = await getMyRecipes(session.user.id, params);
+  let categories;
+  let data;
+
+  try {
+    categories = await getCategories();
+    data = await getMyRecipes(session.user.id, params);
+  } catch (error) {
+    console.error("dashboard.load:", error);
+    return (
+      <>
+        <DashboardHeader user={session.user} title="Мои рецепты" />
+        <EmptyState
+          title="Не удалось загрузить рецепты"
+          description="Проблема с подключением к базе данных. Обновите страницу через минуту или проверьте настройки Neon на Vercel."
+        />
+      </>
+    );
+  }
 
   const isSearch = Boolean(q) || Boolean(category);
   const isEmpty = data.total === 0;

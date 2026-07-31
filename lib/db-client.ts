@@ -11,6 +11,10 @@ function normalizeDatabaseUrl(raw: string): string {
     url.searchParams.set("pgbouncer", "true");
   }
 
+  if (url.hostname.includes("-pooler") && !url.searchParams.has("connection_limit")) {
+    url.searchParams.set("connection_limit", "1");
+  }
+
   return url.toString();
 }
 
@@ -76,7 +80,7 @@ export function isTransientDbError(error: unknown): boolean {
   );
 }
 
-const RETRY_DELAYS_MS = [750, 1500] as const;
+const RETRY_DELAYS_MS = [750, 1500, 3000] as const;
 
 /**
  * Повторяет одну целую async-операцию при временных ошибках БД.

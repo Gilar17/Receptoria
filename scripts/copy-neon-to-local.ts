@@ -302,7 +302,6 @@ async function applyLocalData(
           id: note.id,
           content: note.content,
           createdAt: note.createdAt,
-          updatedAt: note.updatedAt,
           ownerId: note.ownerId,
         },
       });
