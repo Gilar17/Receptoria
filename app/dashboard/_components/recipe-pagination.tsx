@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { buildRecipeListHref } from "@/lib/recipes/url-params";
-import type { RecipeViewMode } from "@/lib/recipes/helpers";
+import type { RecipeSortMode, RecipeViewMode } from "@/lib/recipes/helpers";
 
 type RecipePaginationProps = {
   page: number;
@@ -12,6 +12,7 @@ type RecipePaginationProps = {
   q?: string;
   category?: string;
   view?: RecipeViewMode;
+  sort?: RecipeSortMode;
 };
 
 export function RecipePagination({
@@ -21,6 +22,7 @@ export function RecipePagination({
   q,
   category,
   view,
+  sort,
 }: RecipePaginationProps) {
   if (totalPages <= 1) {
     return null;
@@ -44,7 +46,7 @@ export function RecipePagination({
   }
 
   const hrefFor = (targetPage: number) =>
-    buildRecipeListHref(basePath, { page: targetPage, q, category, view });
+    buildRecipeListHref(basePath, { page: targetPage, q, category, view, sort });
 
   return (
     <nav

@@ -1,10 +1,11 @@
-import type { RecipeViewMode } from "@/lib/recipes/helpers";
+import type { RecipeSortMode, RecipeViewMode } from "@/lib/recipes/helpers";
 
 export type RecipeListUrlParams = {
   q?: string;
   page?: number;
   category?: string;
   view?: RecipeViewMode;
+  sort?: RecipeSortMode;
 };
 
 /** Собирает query string для списков рецептов, сохраняя активные фильтры. */
@@ -25,6 +26,10 @@ export function buildRecipeListQuery(params: RecipeListUrlParams): string {
 
   if (params.view === "table") {
     searchParams.set("view", "table");
+  }
+
+  if (params.sort === "popular") {
+    searchParams.set("sort", "popular");
   }
 
   return searchParams.toString();

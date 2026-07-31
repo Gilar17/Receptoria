@@ -7,6 +7,7 @@ type RecipeListProps = {
   recipes: RecipeListItem[];
   currentUserId: string | null;
   showAuthor?: boolean;
+  showLikes?: boolean;
   categories: CategoryOption[];
   view?: RecipeViewMode;
 };
@@ -15,6 +16,7 @@ export function RecipeList({
   recipes,
   currentUserId,
   showAuthor = false,
+  showLikes = false,
   categories,
   view = "cards",
 }: RecipeListProps) {
@@ -24,6 +26,7 @@ export function RecipeList({
         recipes={recipes}
         currentUserId={currentUserId}
         showAuthor={showAuthor}
+        showLikes={showLikes}
         categories={categories}
       />
     );
@@ -37,6 +40,7 @@ export function RecipeList({
           recipe={recipe}
           currentUserId={currentUserId}
           showAuthor={showAuthor}
+          showLikes={showLikes}
           categories={categories}
         />
       ))}

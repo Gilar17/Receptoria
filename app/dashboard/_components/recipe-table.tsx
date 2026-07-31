@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { CopyRecipeButton } from "@/app/dashboard/_components/copy-recipe-button";
+import { LikeButton } from "@/components/recipes/LikeButton";
 import { DeleteRecipeDialog } from "@/app/dashboard/_components/delete-recipe-dialog";
 import { RecipeDialog } from "@/app/dashboard/_components/recipe-dialog";
 import { RecipePublicToggle } from "@/app/dashboard/_components/recipe-public-toggle";
@@ -40,6 +41,7 @@ type RecipeTableProps = {
   recipes: RecipeListItem[];
   currentUserId: string | null;
   showAuthor?: boolean;
+  showLikes?: boolean;
   categories: CategoryOption[];
 };
 
@@ -47,11 +49,13 @@ function RecipeTableRow({
   recipe,
   currentUserId,
   showAuthor,
+  showLikes,
   categories,
 }: {
   recipe: RecipeListItem;
   currentUserId: string | null;
   showAuthor?: boolean;
+  showLikes?: boolean;
   categories: CategoryOption[];
 }) {
   const router = useRouter();
@@ -136,6 +140,15 @@ function RecipeTableRow({
             isOwner={isOwner}
           />
         </TableCell>
+        {showLikes ? (
+          <TableCell>
+            <LikeButton
+              recipeId={recipe.id}
+              initialLiked={recipe.likedByMe ?? false}
+              initialCount={recipe.likesCount ?? 0}
+            />
+          </TableCell>
+        ) : null}
         <TableCell>
           <div className="flex flex-wrap items-center gap-1">
             <Tooltip>
@@ -236,6 +249,7 @@ export function RecipeTable({
   recipes,
   currentUserId,
   showAuthor = false,
+  showLikes = false,
   categories,
 }: RecipeTableProps) {
   return (
@@ -249,6 +263,7 @@ export function RecipeTable({
             <TableHead>Категория</TableHead>
             <TableHead>Обновлено</TableHead>
             <TableHead className="w-12">Доступ</TableHead>
+            {showLikes ? <TableHead className="w-24">Лайки</TableHead> : null}
             <TableHead>Действия</TableHead>
           </TableRow>
         </TableHeader>
@@ -259,6 +274,7 @@ export function RecipeTable({
               recipe={recipe}
               currentUserId={currentUserId}
               showAuthor={showAuthor}
+              showLikes={showLikes}
               categories={categories}
             />
           ))}

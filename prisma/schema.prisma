@@ -76,11 +76,12 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
 
-  accounts Account[]
-  sessions Session[]
-  recipes  Recipe[]
-  votes    Vote[]
-  notes    Note[]
+  accounts    Account[]
+  sessions    Session[]
+  recipes     Recipe[]
+  votes       Vote[]
+  recipeLikes RecipeLike[]
+  notes       Note[]
 }
 
 model Recipe {
@@ -96,9 +97,10 @@ model Recipe {
   updatedAt   DateTime         @updatedAt
   publishedAt DateTime?
 
-  owner    User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  owner    User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   votes    Vote[]
+  likes    RecipeLike[]
   tags     Tag[]
 
   @@index([ownerId, updatedAt])
@@ -119,6 +121,20 @@ model Vote {
   userId    String
   recipeId  String
   value     Int      @default(1)
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@index([recipeId])
+  @@index([userId])
+}
+
+model RecipeLike {
+  id        String   @id @default(cuid())
+  userId    String
+  recipeId  String
   createdAt DateTime @default(now())
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

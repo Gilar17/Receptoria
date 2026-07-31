@@ -23,6 +23,12 @@ export function parseSearchQuery(raw: string | undefined): string {
 
 export type RecipeViewMode = "cards" | "table";
 
+export type RecipeSortMode = "recent" | "popular";
+
+export function parseSortParam(raw: string | undefined): RecipeSortMode {
+  return raw === "popular" ? "popular" : "recent";
+}
+
 export function parseViewParam(raw: string | undefined): RecipeViewMode {
   return raw === "table" ? "table" : "cards";
 }

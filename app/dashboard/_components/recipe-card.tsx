@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CopyRecipeButton } from "@/app/dashboard/_components/copy-recipe-button";
+import { LikeButton } from "@/components/recipes/LikeButton";
 import { DeleteRecipeDialog } from "@/app/dashboard/_components/delete-recipe-dialog";
 import { RecipeDialog } from "@/app/dashboard/_components/recipe-dialog";
 import { RecipePublicToggle } from "@/app/dashboard/_components/recipe-public-toggle";
@@ -27,6 +28,7 @@ type RecipeCardProps = {
   recipe: RecipeListItem;
   currentUserId: string | null;
   showAuthor?: boolean;
+  showLikes?: boolean;
   categories: CategoryOption[];
 };
 
@@ -56,6 +58,7 @@ export function RecipeCard({
   recipe,
   currentUserId,
   showAuthor = false,
+  showLikes = false,
   categories,
 }: RecipeCardProps) {
   const router = useRouter();
@@ -147,6 +150,13 @@ export function RecipeCard({
             categoryName={categoryName}
             content={optimisticRecipe.content}
           />
+          {showLikes ? (
+            <LikeButton
+              recipeId={recipe.id}
+              initialLiked={recipe.likedByMe ?? false}
+              initialCount={recipe.likesCount ?? 0}
+            />
+          ) : null}
         </div>
 
         {showAuthor ? (

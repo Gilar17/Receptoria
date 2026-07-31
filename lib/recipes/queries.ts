@@ -7,6 +7,8 @@ import {
   parseCategoryParam,
   parsePageParam,
   parseSearchQuery,
+  parseSortParam,
+  type RecipeSortMode,
 } from "@/lib/recipes/helpers";
 import { RecipeVisibility, type Prisma } from "@prisma/client";
 
@@ -14,6 +16,7 @@ export type ListParams = {
   q?: string;
   page?: string;
   category?: string;
+  sort?: string;
 };
 
 export type CategoryOption = {
@@ -39,6 +42,8 @@ export type RecipeListItem = {
     name: string | null;
     image: string | null;
   };
+  likesCount?: number;
+  likedByMe?: boolean;
 };
 
 export type PaginatedRecipes = {
@@ -72,15 +77,77 @@ function buildCategoryWhere(categoryId: string | undefined) {
 
 type RecipeWhereInput = Prisma.RecipeWhereInput;
 
-async function fetchRecipeListPage(where: RecipeWhereInput, page: number) {
+async function fetchRecipeListPage(
+  where: RecipeWhereInput,
+  page: number,
+  orderBy: Prisma.RecipeOrderByWithRelationInput[] = [
+    { updatedAt: "desc" },
+    { createdAt: "desc" },
+  ],
+) {
   return withDbRetry("recipe.listPage", async () => {
     const total = await prisma.recipe.count({ where });
     const items = await prisma.recipe.findMany({
       where,
-      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+      orderBy,
       skip: (page - 1) * RECIPES_PAGE_SIZE,
       take: RECIPES_PAGE_SIZE,
       select: recipeSelect,
+    });
+
+    return { total, items };
+  });
+}
+
+function buildPublicOrderBy(
+  sort: RecipeSortMode,
+): Prisma.RecipeOrderByWithRelationInput[] {
+  if (sort === "popular") {
+    return [{ likes: { _count: "desc" } }, { createdAt: "desc" }];
+  }
+  return [{ createdAt: "desc" }];
+}
+
+async function fetchPublicRecipeListPage(
+  where: RecipeWhereInput,
+  page: number,
+  sort: RecipeSortMode,
+  currentUserId: string | null,
+) {
+  return withDbRetry("recipe.publicListPage", async () => {
+    const orderBy = buildPublicOrderBy(sort);
+    const total = await prisma.recipe.count({ where });
+    const rows = await prisma.recipe.findMany({
+      where,
+      orderBy,
+      skip: (page - 1) * RECIPES_PAGE_SIZE,
+      take: RECIPES_PAGE_SIZE,
+      select: {
+        ...recipeSelect,
+        _count: { select: { likes: true } },
+        ...(currentUserId
+          ? {
+              likes: {
+                where: { userId: currentUserId },
+                select: { id: true },
+                take: 1,
+              },
+            }
+          : {}),
+      },
+    });
+
+    const items: RecipeListItem[] = rows.map((row) => {
+      const { _count, likes, ...recipe } = row as typeof row & {
+        _count: { likes: number };
+        likes?: { id: string }[];
+      };
+
+      return {
+        ...recipe,
+        likesCount: _count.likes,
+        likedByMe: currentUserId ? (likes?.length ?? 0) > 0 : false,
+      };
     });
 
     return { total, items };
@@ -147,10 +214,12 @@ export async function getMyRecipes(
 
 export async function getPublicRecipesPaginated(
   params: ListParams = {},
+  currentUserId: string | null = null,
 ): Promise<PaginatedRecipes> {
   const q = parseSearchQuery(params.q);
   const page = parsePageParam(params.page);
   const categoryId = parseCategoryParam(params.category);
+  const sort = parseSortParam(params.sort);
 
   const where = {
     visibility: RecipeVisibility.PUBLIC,
@@ -158,13 +227,21 @@ export async function getPublicRecipesPaginated(
     ...(buildSearchWhere(q) ?? {}),
   };
 
-  const { total, items } = await fetchRecipeListPage(where, page);
+  const { total, items } = await fetchPublicRecipeListPage(
+    where,
+    page,
+    sort,
+    currentUserId,
+  );
 
   const totalPages = Math.max(1, Math.ceil(total / RECIPES_PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
 
   if (safePage !== page && total > 0) {
-    return getPublicRecipesPaginated({ ...params, page: String(safePage) });
+    return getPublicRecipesPaginated(
+      { ...params, page: String(safePage) },
+      currentUserId,
+    );
   }
 
   return {

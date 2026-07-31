@@ -7,6 +7,7 @@ import { requireAuth } from "@/lib/auth";
 import {
   parseCategoryParam,
   parseSearchQuery,
+  parseSortParam,
   parseViewParam,
 } from "@/lib/recipes/helpers";
 import { getCategories, getPublicRecipesPaginated } from "@/lib/recipes/queries";
@@ -19,6 +20,7 @@ type PublicPageProps = {
     page?: string;
     category?: string;
     view?: string;
+    sort?: string;
   }>;
 };
 
@@ -30,15 +32,16 @@ export default async function PublicRecipesPage({
   const q = parseSearchQuery(params.q);
   const view = parseViewParam(params.view);
   const category = parseCategoryParam(params.category);
+  const sort = parseSortParam(params.sort);
 
   const categories = await getCategories();
-  const data = await getPublicRecipesPaginated(params);
+  const data = await getPublicRecipesPaginated(params, session.user.id);
 
   return (
     <>
       <DashboardHeader user={session.user} title="Публичные рецепты" />
 
-      <RecipeListToolbar categories={categories} />
+      <RecipeListToolbar categories={categories} showSort />
 
       {data.total > 0 ? (
         <p className="mb-4 text-sm text-slate-500">
@@ -58,6 +61,7 @@ export default async function PublicRecipesPage({
             recipes={data.items}
             currentUserId={session.user.id}
             showAuthor
+            showLikes
             categories={categories}
             view={view}
           />
@@ -68,6 +72,7 @@ export default async function PublicRecipesPage({
             q={q}
             category={category}
             view={view}
+            sort={sort}
           />
         </>
       )}
