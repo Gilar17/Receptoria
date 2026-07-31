@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Bookmark,
   BookOpenText,
+  FileText,
   Globe,
   History,
   Settings,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Мои рецепты", icon: BookOpenText, exact: true },
   { href: "/dashboard/public", label: "Публичные рецепты", icon: Globe },
   { href: "/dashboard/favorites", label: "Избранное", icon: Bookmark },
+  { href: "/dashboard/notes", label: "Заметки", icon: FileText },
   { href: "/dashboard/history", label: "История", icon: History },
   { href: "/dashboard/settings", label: "Настройки", icon: Settings },
 ] as const;

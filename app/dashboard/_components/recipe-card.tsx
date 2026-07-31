@@ -7,8 +7,6 @@ import { useRouter } from "next/navigation";
 import {
   BookOpenText,
   Eye,
-  Globe,
-  Lock,
   Pencil,
   Star,
   Tag,
@@ -16,16 +14,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { CopyRecipeButton } from "@/app/dashboard/_components/copy-recipe-button";
 import { DeleteRecipeDialog } from "@/app/dashboard/_components/delete-recipe-dialog";
 import { RecipeDialog } from "@/app/dashboard/_components/recipe-dialog";
+import { RecipePublicToggle } from "@/app/dashboard/_components/recipe-public-toggle";
 import { RecipeViewDialog } from "@/app/dashboard/_components/recipe-view-dialog";
-import {
-  toggleRecipeFavorite,
-  toggleRecipePublic,
-} from "@/lib/recipes/actions";
-import { formatRecipeDate, isPublicVisibility } from "@/lib/recipes/helpers";
+import { toggleRecipeFavorite } from "@/lib/recipes/actions";
+import { formatRecipeDate } from "@/lib/recipes/helpers";
 import type { CategoryOption, RecipeListItem } from "@/lib/recipes/queries";
 
 type RecipeCardProps = {
@@ -37,7 +33,6 @@ type RecipeCardProps = {
 
 type OptimisticRecipe = RecipeListItem & {
   pendingFavorite?: boolean;
-  pendingPublic?: boolean;
 };
 
 export function RecipeCard({
@@ -58,7 +53,6 @@ export function RecipeCard({
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const isOwner = currentUserId === recipe.ownerId;
-  const isPublic = isPublicVisibility(optimisticRecipe.visibility);
   const categoryName = optimisticRecipe.category?.category ?? "Без категории";
 
   const handleToggleFavorite = () => {
@@ -70,28 +64,6 @@ export function RecipeCard({
       const result = await toggleRecipeFavorite({ id: recipe.id });
       if (!result.success) {
         setOptimisticRecipe({ isFavorite: previous });
-        toast.error(result.error);
-        return;
-      }
-      router.refresh();
-    });
-  };
-
-  const handleTogglePublic = (checked: boolean) => {
-    if (!isOwner) return;
-
-    const previous = isPublicVisibility(optimisticRecipe.visibility);
-    startTransition(async () => {
-      setOptimisticRecipe({
-        visibility: checked ? "PUBLIC" : "PRIVATE",
-        pendingPublic: true,
-      });
-      const result = await toggleRecipePublic({
-        id: recipe.id,
-        isPublic: checked,
-      });
-      if (!result.success) {
-        setOptimisticRecipe({ visibility: previous ? "PUBLIC" : "PRIVATE" });
         toast.error(result.error);
         return;
       }
@@ -111,27 +83,34 @@ export function RecipeCard({
               {optimisticRecipe.title}
             </h3>
           </div>
-          {isOwner ? (
-            <button
-              type="button"
-              onClick={handleToggleFavorite}
-              disabled={isPending}
-              className="shrink-0 rounded-md p-1 text-slate-400 transition hover:text-amber-500"
-              aria-label={
-                optimisticRecipe.isFavorite
-                  ? "Убрать из избранного"
-                  : "Добавить в избранное"
-              }
-            >
-              <Star
-                className={cn(
-                  "h-4 w-4",
-                  optimisticRecipe.isFavorite &&
-                    "fill-amber-400 text-amber-400",
-                )}
-              />
-            </button>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-0.5">
+            {isOwner ? (
+              <button
+                type="button"
+                onClick={handleToggleFavorite}
+                disabled={isPending}
+                className="rounded-md p-1 text-slate-400 transition hover:text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-50"
+                aria-label={
+                  optimisticRecipe.isFavorite
+                    ? "Убрать из избранного"
+                    : "Добавить в избранное"
+                }
+              >
+                <Star
+                  className={cn(
+                    "h-4 w-4",
+                    optimisticRecipe.isFavorite &&
+                      "fill-amber-400 text-amber-400",
+                  )}
+                />
+              </button>
+            ) : null}
+            <RecipePublicToggle
+              recipeId={recipe.id}
+              visibility={optimisticRecipe.visibility}
+              isOwner={isOwner}
+            />
+          </div>
         </div>
 
         <p className="mt-2 line-clamp-3 flex-1 text-sm text-slate-500">
@@ -146,19 +125,11 @@ export function RecipeCard({
           <span className="text-slate-400">
             {formatRecipeDate(optimisticRecipe.updatedAt)}
           </span>
-          <Badge variant="outline" className="gap-1 font-normal">
-            {isPublic ? (
-              <>
-                <Globe className="h-3 w-3" />
-                Публичный
-              </>
-            ) : (
-              <>
-                <Lock className="h-3 w-3" />
-                Приватный
-              </>
-            )}
-          </Badge>
+          <CopyRecipeButton
+            title={optimisticRecipe.title}
+            categoryName={categoryName}
+            content={optimisticRecipe.content}
+          />
         </div>
 
         {showAuthor ? (
@@ -189,7 +160,7 @@ export function RecipeCard({
             onClick={() => setViewOpen(true)}
           >
             <Eye className="h-3.5 w-3.5" />
-            Просмотреть
+            Открыть
           </Button>
 
           {isOwner ? (
@@ -202,7 +173,7 @@ export function RecipeCard({
                 onClick={() => setEditOpen(true)}
               >
                 <Pencil className="h-3.5 w-3.5" />
-                Редактировать
+                Изменить
               </Button>
               <Button
                 type="button"
@@ -214,15 +185,6 @@ export function RecipeCard({
                 <Trash2 className="h-3.5 w-3.5" />
                 Удалить
               </Button>
-              <div className="ml-auto flex items-center gap-1.5">
-                <span className="text-[11px] text-slate-500">Публичный</span>
-                <Switch
-                  checked={isPublic}
-                  onCheckedChange={handleTogglePublic}
-                  disabled={isPending}
-                  aria-label="Переключить публичность"
-                />
-              </div>
             </>
           ) : null}
         </div>

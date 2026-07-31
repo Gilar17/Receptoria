@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   BookOpenText,
   Eye,
-  Globe,
-  Lock,
   Pencil,
   Star,
   Tag,
@@ -23,16 +21,19 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { CopyRecipeButton } from "@/app/dashboard/_components/copy-recipe-button";
 import { DeleteRecipeDialog } from "@/app/dashboard/_components/delete-recipe-dialog";
 import { RecipeDialog } from "@/app/dashboard/_components/recipe-dialog";
+import { RecipePublicToggle } from "@/app/dashboard/_components/recipe-public-toggle";
 import { RecipeViewDialog } from "@/app/dashboard/_components/recipe-view-dialog";
-import {
-  toggleRecipeFavorite,
-  toggleRecipePublic,
-} from "@/lib/recipes/actions";
-import { formatRecipeDate, isPublicVisibility } from "@/lib/recipes/helpers";
+import { toggleRecipeFavorite } from "@/lib/recipes/actions";
+import { formatRecipeDate } from "@/lib/recipes/helpers";
 import type { CategoryOption, RecipeListItem } from "@/lib/recipes/queries";
 
 type RecipeTableProps = {
@@ -65,7 +66,7 @@ function RecipeTableRow({
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const isOwner = currentUserId === recipe.ownerId;
-  const isPublic = isPublicVisibility(optimisticRecipe.visibility);
+  const categoryName = optimisticRecipe.category?.category ?? "Без категории";
   const preview =
     optimisticRecipe.content.length > 80
       ? `${optimisticRecipe.content.slice(0, 80).trim()}…`
@@ -86,24 +87,6 @@ function RecipeTableRow({
     });
   };
 
-  const handleTogglePublic = (checked: boolean) => {
-    if (!isOwner) return;
-    const previous = isPublicVisibility(optimisticRecipe.visibility);
-    startTransition(async () => {
-      setOptimisticRecipe({ visibility: checked ? "PUBLIC" : "PRIVATE" });
-      const result = await toggleRecipePublic({
-        id: recipe.id,
-        isPublic: checked,
-      });
-      if (!result.success) {
-        setOptimisticRecipe({ visibility: previous ? "PUBLIC" : "PRIVATE" });
-        toast.error(result.error);
-        return;
-      }
-      router.refresh();
-    });
-  };
-
   return (
     <>
       <TableRow>
@@ -113,7 +96,7 @@ function RecipeTableRow({
               type="button"
               onClick={handleToggleFavorite}
               disabled={isPending}
-              className="rounded-md p-1 text-slate-400 hover:text-amber-500"
+              className="rounded-md p-1 text-slate-400 hover:text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-50"
               aria-label={
                 optimisticRecipe.isFavorite ? "Убрать из избранного" : "В избранное"
               }
@@ -140,67 +123,73 @@ function RecipeTableRow({
         <TableCell>
           <Badge variant="secondary" className="gap-1 font-normal">
             <Tag className="h-3 w-3" />
-            {optimisticRecipe.category?.category ?? "Без категории"}
+            {categoryName}
           </Badge>
         </TableCell>
         <TableCell className="whitespace-nowrap text-xs text-slate-500">
           {formatRecipeDate(optimisticRecipe.updatedAt)}
         </TableCell>
         <TableCell>
-          <Badge variant="outline" className="gap-1 font-normal">
-            {isPublic ? (
-              <>
-                <Globe className="h-3 w-3" />
-                Публичный
-              </>
-            ) : (
-              <>
-                <Lock className="h-3 w-3" />
-                Приватный
-              </>
-            )}
-          </Badge>
+          <RecipePublicToggle
+            recipeId={recipe.id}
+            visibility={optimisticRecipe.visibility}
+            isOwner={isOwner}
+          />
         </TableCell>
         <TableCell>
           <div className="flex flex-wrap items-center gap-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              title="Просмотреть"
-              onClick={() => setViewOpen(true)}
-            >
-              <Eye className="h-3.5 w-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label="Открыть"
+                  onClick={() => setViewOpen(true)}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Открыть</TooltipContent>
+            </Tooltip>
+            <CopyRecipeButton
+              title={optimisticRecipe.title}
+              categoryName={categoryName}
+              content={optimisticRecipe.content}
+            />
             {isOwner ? (
               <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  title="Редактировать"
-                  onClick={() => setEditOpen(true)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  title="Удалить"
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-                <Switch
-                  checked={isPublic}
-                  onCheckedChange={handleTogglePublic}
-                  disabled={isPending}
-                  aria-label="Публичность"
-                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label="Изменить"
+                      onClick={() => setEditOpen(true)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Изменить</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label="Удалить"
+                      onClick={() => setDeleteOpen(true)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Удалить</TooltipContent>
+                </Tooltip>
               </>
             ) : null}
           </div>
@@ -259,7 +248,7 @@ export function RecipeTable({
             <TableHead>Описание</TableHead>
             <TableHead>Категория</TableHead>
             <TableHead>Обновлено</TableHead>
-            <TableHead>Статус</TableHead>
+            <TableHead className="w-12">Доступ</TableHead>
             <TableHead>Действия</TableHead>
           </TableRow>
         </TableHeader>

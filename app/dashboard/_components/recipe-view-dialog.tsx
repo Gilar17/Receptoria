@@ -103,7 +103,7 @@ export function RecipeViewDialog({
         <DialogFooter className="gap-2 sm:gap-0">
           {onEdit ? (
             <Button type="button" variant="outline" onClick={onEdit}>
-              Редактировать
+              Изменить
             </Button>
           ) : null}
           <Button type="button" onClick={() => onOpenChange(false)}>
