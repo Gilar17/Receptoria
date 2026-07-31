@@ -12,7 +12,6 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CopyRecipeButton } from "@/app/dashboard/_components/copy-recipe-button";
@@ -34,6 +33,24 @@ type RecipeCardProps = {
 type OptimisticRecipe = RecipeListItem & {
   pendingFavorite?: boolean;
 };
+
+const recipeActionButtonBase =
+  "inline-flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg border px-2 text-[11px] font-medium text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 sm:text-xs";
+
+const recipeOpenButtonClass = cn(
+  recipeActionButtonBase,
+  "border-[#0E6B59] bg-[#0E6B59] hover:border-[#0c5a4a] hover:bg-[#0c5a4a] hover:text-white focus-visible:ring-[#0E6B59]",
+);
+
+const recipeEditButtonClass = cn(
+  recipeActionButtonBase,
+  "border-[#084991] bg-[#084991] hover:border-[#063a73] hover:bg-[#063a73] hover:text-white focus-visible:ring-[#084991]",
+);
+
+const recipeDeleteButtonClass = cn(
+  recipeActionButtonBase,
+  "border-[#D4130F] bg-[#D4130F] hover:border-[#b8100d] hover:bg-[#b8100d] hover:text-white focus-visible:ring-[#D4130F]",
+);
 
 export function RecipeCard({
   recipe,
@@ -151,40 +168,34 @@ export function RecipeCard({
           </div>
         ) : null}
 
-        <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3">
-          <Button
+        <div className="mt-3 flex flex-nowrap items-center gap-2 border-t border-slate-100 pt-3">
+          <button
             type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 px-2.5 text-xs"
+            className={recipeOpenButtonClass}
             onClick={() => setViewOpen(true)}
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-3.5 w-3.5 shrink-0" />
             Открыть
-          </Button>
+          </button>
 
           {isOwner ? (
             <>
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 px-2.5 text-xs"
+                className={recipeEditButtonClass}
                 onClick={() => setEditOpen(true)}
               >
-                <Pencil className="h-3.5 w-3.5" />
+                <Pencil className="h-3.5 w-3.5 shrink-0" />
                 Изменить
-              </Button>
-              <Button
+              </button>
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 px-2.5 text-xs"
+                className={recipeDeleteButtonClass}
                 onClick={() => setDeleteOpen(true)}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5 shrink-0" />
                 Удалить
-              </Button>
+              </button>
             </>
           ) : null}
         </div>
