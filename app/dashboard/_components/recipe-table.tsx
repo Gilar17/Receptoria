@@ -2,7 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpenText,
   Eye,
@@ -27,7 +27,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { CopyRecipeButton } from "@/app/dashboard/_components/copy-recipe-button";
 import { LikeButton } from "@/components/recipes/LikeButton";
 import { DeleteRecipeDialog } from "@/app/dashboard/_components/delete-recipe-dialog";
 import { RecipeDialog } from "@/app/dashboard/_components/recipe-dialog";
@@ -59,6 +58,7 @@ function RecipeTableRow({
   categories: CategoryOption[];
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [optimisticRecipe, setOptimisticRecipe] = useOptimistic(
     recipe,
@@ -71,13 +71,19 @@ function RecipeTableRow({
 
   const isOwner = currentUserId === recipe.ownerId;
   const categoryName = optimisticRecipe.category?.category ?? "Без категории";
+  const showFavoriteStar = Boolean(currentUserId) && (isOwner || showLikes);
   const preview =
     optimisticRecipe.content.length > 80
       ? `${optimisticRecipe.content.slice(0, 80).trim()}…`
       : optimisticRecipe.content;
 
   const handleToggleFavorite = () => {
-    if (!isOwner) return;
+    if (!currentUserId) {
+      toast.error("Чтобы добавить рецепт в избранное, войдите в аккаунт");
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
     const previous = optimisticRecipe.isFavorite;
     startTransition(async () => {
       setOptimisticRecipe({ isFavorite: !previous });
@@ -95,14 +101,16 @@ function RecipeTableRow({
     <>
       <TableRow>
         <TableCell className="w-10">
-          {isOwner ? (
+          {showFavoriteStar ? (
             <button
               type="button"
               onClick={handleToggleFavorite}
               disabled={isPending}
-              className="rounded-md p-1 text-slate-400 hover:text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-50"
+              className="rounded-md p-1 text-slate-400 transition hover:text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-50"
               aria-label={
-                optimisticRecipe.isFavorite ? "Убрать из избранного" : "В избранное"
+                optimisticRecipe.isFavorite
+                  ? "Удалить рецепт из избранного"
+                  : "Добавить рецепт в избранное"
               }
             >
               <Star
@@ -166,11 +174,6 @@ function RecipeTableRow({
               </TooltipTrigger>
               <TooltipContent side="top">Открыть</TooltipContent>
             </Tooltip>
-            <CopyRecipeButton
-              title={optimisticRecipe.title}
-              categoryName={categoryName}
-              content={optimisticRecipe.content}
-            />
             {isOwner ? (
               <>
                 <Tooltip>

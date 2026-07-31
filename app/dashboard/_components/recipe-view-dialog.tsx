@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CopyRecipeTextButton } from "@/app/dashboard/_components/copy-recipe-button";
 import { Globe, Lock, Tag } from "lucide-react";
 import { formatRecipeDate, isPublicVisibility } from "@/lib/recipes/helpers";
 import type { RecipeListItem } from "@/lib/recipes/queries";
@@ -100,15 +101,22 @@ export function RecipeViewDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          {onEdit ? (
-            <Button type="button" variant="outline" onClick={onEdit}>
-              Изменить
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+          <CopyRecipeTextButton
+            title={recipe.title}
+            categoryName={categoryName}
+            content={recipe.content}
+          />
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            {onEdit ? (
+              <Button type="button" variant="outline" onClick={onEdit}>
+                Изменить
+              </Button>
+            ) : null}
+            <Button type="button" onClick={() => onOpenChange(false)}>
+              Закрыть
             </Button>
-          ) : null}
-          <Button type="button" onClick={() => onOpenChange(false)}>
-            Закрыть
-          </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

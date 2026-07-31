@@ -3,7 +3,7 @@
 import { useOptimistic, useState, useTransition } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpenText,
   Eye,
@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { CopyRecipeButton } from "@/app/dashboard/_components/copy-recipe-button";
 import { LikeButton } from "@/components/recipes/LikeButton";
 import { DeleteRecipeDialog } from "@/app/dashboard/_components/delete-recipe-dialog";
 import { RecipeDialog } from "@/app/dashboard/_components/recipe-dialog";
@@ -37,21 +36,26 @@ type OptimisticRecipe = RecipeListItem & {
 };
 
 const recipeActionButtonBase =
-  "inline-flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg border px-2 text-[11px] font-medium text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 sm:text-xs";
+  "inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-lg border px-2 text-[11px] font-medium text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 sm:text-xs";
 
 const recipeOpenButtonClass = cn(
   recipeActionButtonBase,
   "border-[#0E6B59] bg-[#0E6B59] hover:border-[#0c5a4a] hover:bg-[#0c5a4a] hover:text-white focus-visible:ring-[#0E6B59]",
 );
 
+const recipeOpenButtonCompactClass = cn(
+  recipeOpenButtonClass,
+  "w-auto max-w-[33%] shrink-0 flex-none",
+);
+
 const recipeEditButtonClass = cn(
   recipeActionButtonBase,
-  "border-[#084991] bg-[#084991] hover:border-[#063a73] hover:bg-[#063a73] hover:text-white focus-visible:ring-[#084991]",
+  "min-w-0 flex-1 border-[#084991] bg-[#084991] hover:border-[#063a73] hover:bg-[#063a73] hover:text-white focus-visible:ring-[#084991]",
 );
 
 const recipeDeleteButtonClass = cn(
   recipeActionButtonBase,
-  "border-[#D4130F] bg-[#D4130F] hover:border-[#b8100d] hover:bg-[#b8100d] hover:text-white focus-visible:ring-[#D4130F]",
+  "min-w-0 flex-1 border-[#D4130F] bg-[#D4130F] hover:border-[#b8100d] hover:bg-[#b8100d] hover:text-white focus-visible:ring-[#D4130F]",
 );
 
 export function RecipeCard({
@@ -62,6 +66,7 @@ export function RecipeCard({
   categories,
 }: RecipeCardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [optimisticRecipe, setOptimisticRecipe] = useOptimistic<
     OptimisticRecipe,
@@ -74,9 +79,14 @@ export function RecipeCard({
 
   const isOwner = currentUserId === recipe.ownerId;
   const categoryName = optimisticRecipe.category?.category ?? "Без категории";
+  const showFavoriteStar = Boolean(currentUserId) && (isOwner || showLikes);
 
   const handleToggleFavorite = () => {
-    if (!isOwner) return;
+    if (!currentUserId) {
+      toast.error("Чтобы добавить рецепт в избранное, войдите в аккаунт");
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+      return;
+    }
 
     const previous = optimisticRecipe.isFavorite;
     startTransition(async () => {
@@ -104,7 +114,7 @@ export function RecipeCard({
             </h3>
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
-            {isOwner ? (
+            {showFavoriteStar ? (
               <button
                 type="button"
                 onClick={handleToggleFavorite}
@@ -112,8 +122,8 @@ export function RecipeCard({
                 className="rounded-md p-1 text-slate-400 transition hover:text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-50"
                 aria-label={
                   optimisticRecipe.isFavorite
-                    ? "Убрать из избранного"
-                    : "Добавить в избранное"
+                    ? "Удалить рецепт из избранного"
+                    : "Добавить рецепт в избранное"
                 }
               >
                 <Star
@@ -145,12 +155,7 @@ export function RecipeCard({
           <span className="text-slate-400">
             {formatRecipeDate(optimisticRecipe.updatedAt)}
           </span>
-          <CopyRecipeButton
-            title={optimisticRecipe.title}
-            categoryName={categoryName}
-            content={optimisticRecipe.content}
-          />
-          {showLikes ? (
+          {showLikes && isOwner ? (
             <LikeButton
               recipeId={recipe.id}
               initialLiked={recipe.likedByMe ?? false}
@@ -178,37 +183,55 @@ export function RecipeCard({
           </div>
         ) : null}
 
-        <div className="mt-3 flex flex-nowrap items-center gap-2 border-t border-slate-100 pt-3">
-          <button
-            type="button"
-            className={recipeOpenButtonClass}
-            onClick={() => setViewOpen(true)}
-          >
-            <Eye className="h-3.5 w-3.5 shrink-0" />
-            Открыть
-          </button>
+        {!isOwner && showLikes ? (
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              className={recipeOpenButtonCompactClass}
+              onClick={() => setViewOpen(true)}
+            >
+              <Eye className="h-3.5 w-3.5 shrink-0" />
+              Открыть
+            </button>
+            <LikeButton
+              recipeId={recipe.id}
+              initialLiked={recipe.likedByMe ?? false}
+              initialCount={recipe.likesCount ?? 0}
+            />
+          </div>
+        ) : (
+          <div className="mt-3 flex flex-nowrap items-center gap-2 border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              className={isOwner ? recipeOpenButtonClass : recipeOpenButtonCompactClass}
+              onClick={() => setViewOpen(true)}
+            >
+              <Eye className="h-3.5 w-3.5 shrink-0" />
+              Открыть
+            </button>
 
-          {isOwner ? (
-            <>
-              <button
-                type="button"
-                className={recipeEditButtonClass}
-                onClick={() => setEditOpen(true)}
-              >
-                <Pencil className="h-3.5 w-3.5 shrink-0" />
-                Изменить
-              </button>
-              <button
-                type="button"
-                className={recipeDeleteButtonClass}
-                onClick={() => setDeleteOpen(true)}
-              >
-                <Trash2 className="h-3.5 w-3.5 shrink-0" />
-                Удалить
-              </button>
-            </>
-          ) : null}
-        </div>
+            {isOwner ? (
+              <>
+                <button
+                  type="button"
+                  className={recipeEditButtonClass}
+                  onClick={() => setEditOpen(true)}
+                >
+                  <Pencil className="h-3.5 w-3.5 shrink-0" />
+                  Изменить
+                </button>
+                <button
+                  type="button"
+                  className={recipeDeleteButtonClass}
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                  Удалить
+                </button>
+              </>
+            ) : null}
+          </div>
+        )}
       </article>
 
       <RecipeViewDialog

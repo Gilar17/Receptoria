@@ -81,6 +81,7 @@ model User {
   recipes     Recipe[]
   votes       Vote[]
   recipeLikes RecipeLike[]
+  recipeFavorites RecipeFavorite[]
   notes       Note[]
 }
 
@@ -101,6 +102,7 @@ model Recipe {
   category Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   votes    Vote[]
   likes    RecipeLike[]
+  favorites RecipeFavorite[]
   tags     Tag[]
 
   @@index([ownerId, updatedAt])
@@ -132,6 +134,20 @@ model Vote {
 }
 
 model RecipeLike {
+  id        String   @id @default(cuid())
+  userId    String
+  recipeId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@index([recipeId])
+  @@index([userId])
+}
+
+model RecipeFavorite {
   id        String   @id @default(cuid())
   userId    String
   recipeId  String

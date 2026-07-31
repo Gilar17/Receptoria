@@ -49,6 +49,7 @@ export default async function FavoritesPage({ searchParams }: FavoritesPageProps
           <RecipeList
             recipes={data.items}
             currentUserId={session.user.id}
+            showAuthor
             categories={categories}
             view={view}
           />

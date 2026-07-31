@@ -272,22 +272,69 @@ export async function toggleRecipeFavorite(
     };
   }
 
-  const existing = await getRecipeByIdForOwner(parsed.data.id, userId);
-  if (!existing) {
-    return { success: false, error: "Рецепт не найден или доступ запрещён" };
-  }
-
   try {
-    const updated = await prisma.recipe.update({
+    const recipe = await prisma.recipe.findUnique({
       where: { id: parsed.data.id },
-      data: { isFavorite: !existing.isFavorite },
+      select: { id: true, ownerId: true, visibility: true, isFavorite: true },
     });
 
+    if (!recipe) {
+      return { success: false, error: "Рецепт не найден или доступ запрещён" };
+    }
+
+    if (recipe.ownerId === userId) {
+      const updated = await prisma.recipe.update({
+        where: { id: parsed.data.id },
+        data: { isFavorite: !recipe.isFavorite },
+      });
+
+      revalidateDashboardPaths();
+      return {
+        success: true,
+        data: { isFavorite: updated.isFavorite },
+      };
+    }
+
+    if (recipe.visibility !== RecipeVisibility.PUBLIC) {
+      return { success: false, error: "Рецепт не найден или доступ запрещён" };
+    }
+
+    const existing = await prisma.recipeFavorite.findUnique({
+      where: {
+        userId_recipeId: { userId, recipeId: parsed.data.id },
+      },
+    });
+
+    if (existing) {
+      await prisma.recipeFavorite.delete({ where: { id: existing.id } });
+      revalidateDashboardPaths();
+      return { success: true, data: { isFavorite: false } };
+    }
+
+    try {
+      await prisma.recipeFavorite.create({
+        data: { userId, recipeId: parsed.data.id },
+      });
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code: string }).code === "P2002"
+      ) {
+        await prisma.recipeFavorite.delete({
+          where: {
+            userId_recipeId: { userId, recipeId: parsed.data.id },
+          },
+        });
+        revalidateDashboardPaths();
+        return { success: true, data: { isFavorite: false } };
+      }
+      throw error;
+    }
+
     revalidateDashboardPaths();
-    return {
-      success: true,
-      data: { isFavorite: updated.isFavorite },
-    };
+    return { success: true, data: { isFavorite: true } };
   } catch (error) {
     console.error("toggleRecipeFavorite:", error);
     return { success: false, error: "Не удалось изменить избранное" };

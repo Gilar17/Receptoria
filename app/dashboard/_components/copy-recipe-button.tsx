@@ -2,6 +2,7 @@
 
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -9,20 +10,34 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-type CopyRecipeButtonProps = {
+type RecipeCopyFields = {
   title: string;
   categoryName: string;
   content: string;
-  className?: string;
 };
 
-function formatRecipeCopyText(
-  title: string,
-  categoryName: string,
-  content: string,
-): string {
+export function formatRecipeCopyText({
+  title,
+  categoryName,
+  content,
+}: RecipeCopyFields): string {
   return `${title}\n\nКатегория: ${categoryName}\n\n${content}`;
 }
+
+export async function copyRecipeToClipboard(
+  fields: RecipeCopyFields,
+): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(formatRecipeCopyText(fields));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+type CopyRecipeButtonProps = RecipeCopyFields & {
+  className?: string;
+};
 
 export function CopyRecipeButton({
   title,
@@ -31,12 +46,10 @@ export function CopyRecipeButton({
   className,
 }: CopyRecipeButtonProps) {
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(
-        formatRecipeCopyText(title, categoryName, content),
-      );
+    const ok = await copyRecipeToClipboard({ title, categoryName, content });
+    if (ok) {
       toast.success("Рецепт скопирован");
-    } catch {
+    } else {
       toast.error("Не удалось скопировать рецепт");
     }
   };
@@ -58,5 +71,38 @@ export function CopyRecipeButton({
       </TooltipTrigger>
       <TooltipContent side="top">Копировать рецепт</TooltipContent>
     </Tooltip>
+  );
+}
+
+type CopyRecipeTextButtonProps = RecipeCopyFields & {
+  className?: string;
+};
+
+export function CopyRecipeTextButton({
+  title,
+  categoryName,
+  content,
+  className,
+}: CopyRecipeTextButtonProps) {
+  const handleCopy = async () => {
+    const ok = await copyRecipeToClipboard({ title, categoryName, content });
+    if (ok) {
+      toast.success("Рецепт скопирован");
+    } else {
+      toast.error("Не удалось скопировать рецепт");
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={handleCopy}
+      className={className}
+      aria-label="Копировать рецепт"
+    >
+      <Copy className="h-4 w-4" />
+      Копировать
+    </Button>
   );
 }

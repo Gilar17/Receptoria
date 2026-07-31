@@ -132,19 +132,33 @@ async function fetchPublicRecipeListPage(
                 select: { id: true },
                 take: 1,
               },
+              favorites: {
+                where: { userId: currentUserId },
+                select: { id: true },
+                take: 1,
+              },
             }
           : {}),
       },
     });
 
     const items: RecipeListItem[] = rows.map((row) => {
-      const { _count, likes, ...recipe } = row as typeof row & {
+      const { _count, likes, favorites, ...recipe } = row as typeof row & {
         _count: { likes: number };
         likes?: { id: string }[];
+        favorites?: { id: string }[];
       };
+
+      const savedByMe = (favorites?.length ?? 0) > 0;
+      const isFavoriteForViewer = currentUserId
+        ? recipe.ownerId === currentUserId
+          ? recipe.isFavorite
+          : savedByMe
+        : false;
 
       return {
         ...recipe,
+        isFavorite: isFavoriteForViewer,
         likesCount: _count.likes,
         likedByMe: currentUserId ? (likes?.length ?? 0) > 0 : false,
       };
@@ -254,31 +268,38 @@ export async function getPublicRecipesPaginated(
 }
 
 export async function getFavoriteRecipes(
-  ownerId: string,
+  userId: string,
   params: ListParams = {},
 ): Promise<PaginatedRecipes> {
   const q = parseSearchQuery(params.q);
   const page = parsePageParam(params.page);
   const categoryId = parseCategoryParam(params.category);
 
-  const where = {
-    ownerId,
-    isFavorite: true,
+  const where: RecipeWhereInput = {
+    OR: [
+      { ownerId: userId, isFavorite: true },
+      { favorites: { some: { userId } } },
+    ],
     ...buildCategoryWhere(categoryId),
     ...(buildSearchWhere(q) ?? {}),
   };
 
   const { total, items } = await fetchRecipeListPage(where, page);
 
+  const itemsWithFavoriteFlag = items.map((item) => ({
+    ...item,
+    isFavorite: true,
+  }));
+
   const totalPages = Math.max(1, Math.ceil(total / RECIPES_PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
 
   if (safePage !== page && total > 0) {
-    return getFavoriteRecipes(ownerId, { ...params, page: String(safePage) });
+    return getFavoriteRecipes(userId, { ...params, page: String(safePage) });
   }
 
   return {
-    items,
+    items: itemsWithFavoriteFlag,
     total,
     page: safePage,
     pageSize: RECIPES_PAGE_SIZE,

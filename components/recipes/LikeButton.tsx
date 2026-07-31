@@ -10,6 +10,7 @@ type LikeButtonProps = {
   recipeId: string;
   initialLiked: boolean;
   initialCount: number;
+  className?: string;
 };
 
 type LikeResponse = {
@@ -21,6 +22,7 @@ export function LikeButton({
   recipeId,
   initialLiked,
   initialCount,
+  className,
 }: LikeButtonProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -88,16 +90,20 @@ export function LikeButton({
       aria-label={liked ? "Убрать лайк" : "Поставить лайк"}
       aria-pressed={liked}
       className={cn(
-        "inline-flex min-h-9 min-w-[3rem] items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex min-h-9 min-w-[3rem] shrink-0 items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60",
         liked
-          ? "bg-sky-100 text-sky-700 hover:bg-sky-200"
+          ? "bg-amber-50 text-amber-600 hover:bg-amber-100"
           : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+        className,
       )}
     >
       <ThumbsUp
-        className={cn("h-4 w-4 shrink-0", liked && "fill-current")}
+        className={cn(
+          "h-4 w-4 shrink-0",
+          liked ? "fill-amber-400 text-amber-400" : "text-slate-500",
+        )}
       />
-      <span className="tabular-nums">{count}</span>
+      <span className="tabular-nums text-slate-700">{count}</span>
     </button>
   );
 }
