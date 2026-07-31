@@ -44,3 +44,14 @@ export const togglePublicSchema = z.object({
 export const toggleFavoriteSchema = z.object({
   id: recipeIdSchema,
 });
+
+export const categoryFormSchema = z.object({
+  category: z
+    .string({ message: "Введите название категории" })
+    .trim()
+    .min(1, "Введите название категории")
+    .min(2, "Название категории должно содержать не менее 2 символов")
+    .max(50, "Название категории не должно превышать 50 символов"),
+});
+
+export type CategoryFormValues = z.infer<typeof categoryFormSchema>;

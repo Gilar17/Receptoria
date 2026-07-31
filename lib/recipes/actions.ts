@@ -19,11 +19,13 @@ import {
 } from "@/lib/recipes/queries";
 import {
   deleteRecipeSchema,
+  categoryFormSchema,
   recipeFormSchema,
   toggleFavoriteSchema,
   togglePublicSchema,
   updateRecipeSchema,
 } from "@/lib/recipes/schema";
+import { findCategoryByNameCaseInsensitive } from "@/lib/recipes/category-helpers";
 
 export type ActionResult<T = void> =
   | { success: true; data?: T; message?: string }
@@ -289,5 +291,60 @@ export async function toggleRecipeFavorite(
   } catch (error) {
     console.error("toggleRecipeFavorite:", error);
     return { success: false, error: "Не удалось изменить избранное" };
+  }
+}
+
+export async function createCategory(
+  input: unknown,
+): Promise<
+  ActionResult<{ id: string; category: string; alreadyExists: boolean }>
+> {
+  const userId = await requireUserId();
+  if (typeof userId !== "string") {
+    return userId;
+  }
+
+  const parsed = categoryFormSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Некорректные данные",
+    };
+  }
+
+  const trimmedName = parsed.data.category.trim();
+
+  try {
+    const existing = await findCategoryByNameCaseInsensitive(prisma, trimmedName);
+    if (existing) {
+      revalidateDashboardPaths();
+      return {
+        success: true,
+        data: {
+          id: existing.id,
+          category: existing.category,
+          alreadyExists: true,
+        },
+        message: "Такая категория уже существует",
+      };
+    }
+
+    const created = await prisma.category.create({
+      data: { category: trimmedName },
+    });
+
+    revalidateDashboardPaths();
+    return {
+      success: true,
+      data: {
+        id: created.id,
+        category: created.category,
+        alreadyExists: false,
+      },
+      message: "Категория добавлена",
+    };
+  } catch (error) {
+    console.error("createCategory:", error);
+    return { success: false, error: "Не удалось добавить категорию" };
   }
 }

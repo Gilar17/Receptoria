@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { withDbRetry } from "@/lib/db-client";
 import { DEFAULT_CATEGORY_NAME, RECIPES_PAGE_SIZE } from "@/lib/recipes/constants";
+import { findCategoryByNameCaseInsensitive, sortCategoryOptions } from "@/lib/recipes/category-helpers";
 import {
   buildSearchWhere,
   parseCategoryParam,
@@ -88,9 +89,7 @@ async function fetchRecipeListPage(where: RecipeWhereInput, page: number) {
 
 async function getDefaultCategoryId(): Promise<string> {
   const existing = await withDbRetry("category.findDefault", () =>
-    prisma.category.findFirst({
-      where: { category: DEFAULT_CATEGORY_NAME },
-    }),
+    findCategoryByNameCaseInsensitive(prisma, DEFAULT_CATEGORY_NAME),
   );
 
   if (existing) {
@@ -105,12 +104,13 @@ async function getDefaultCategoryId(): Promise<string> {
 }
 
 export async function getCategories(): Promise<CategoryOption[]> {
-  return withDbRetry("category.findMany", () =>
+  const categories = await withDbRetry("category.findMany", () =>
     prisma.category.findMany({
-      orderBy: { category: "asc" },
       select: { id: true, category: true },
     }),
   );
+
+  return sortCategoryOptions(categories);
 }
 
 export async function getMyRecipes(

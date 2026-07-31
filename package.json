@@ -16,6 +16,7 @@
     "db:copy:dry": "tsx scripts/copy-neon-to-local.ts --dry-run",
     "db:copy:apply": "tsx scripts/copy-neon-to-local.ts --apply",
     "db:studio": "tsx scripts/safe-studio.ts",
+    "db:setup-categories": "tsx scripts/setup-recipe-categories.ts",
     "view-db": "node scripts/view-db.mjs"
   },
   "prisma": {
