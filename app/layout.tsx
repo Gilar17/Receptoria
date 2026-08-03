@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
+import { HeaderShell } from "@/components/layout/header-shell";
 import { SiteToaster } from "@/components/layout/site-toaster";
+import { DashboardTooltipProvider } from "@/app/dashboard/_components/dashboard-tooltip-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,10 +38,14 @@ export default function RootLayout({
         className="min-h-full flex flex-col bg-zinc-50 text-zinc-900"
         suppressHydrationWarning
       >
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
-        <SiteToaster />
+        <DashboardTooltipProvider>
+          <Suspense fallback={<HeaderShell />}>
+            <Header />
+          </Suspense>
+          <main className="flex-1">{children}</main>
+          <Footer />
+          <SiteToaster />
+        </DashboardTooltipProvider>
       </body>
     </html>
   );

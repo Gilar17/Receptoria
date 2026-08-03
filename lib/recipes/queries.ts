@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { withDbRetry } from "@/lib/db-client";
 import { DEFAULT_CATEGORY_NAME, RECIPES_PAGE_SIZE } from "@/lib/recipes/constants";
@@ -422,39 +421,31 @@ async function fetchUserLikedRecipeIds(
   return new Set(likes.map((like) => like.recipeId));
 }
 
-async function loadHomeStaticDataFromDb() {
-  return withDbRetry("home.staticData", async () => {
-    const recentRows = await prisma.recipe.findMany({
-      where: { visibility: RecipeVisibility.PUBLIC },
-      orderBy: { createdAt: "desc" },
-      take: HOME_RECIPES_LIMIT,
-      select: publicRecipeExtendedSelect,
-    });
+const homeRecipeBaseSelect = {
+  id: true,
+  title: true,
+  content: true,
+  visibility: true,
+  isFavorite: true,
+  createdAt: true,
+  updatedAt: true,
+  ownerId: true,
+  categoryId: true,
+  _count: { select: { likes: true } },
+} as const;
 
-    const popularRows = await prisma.recipe.findMany({
-      where: { visibility: RecipeVisibility.PUBLIC },
-      orderBy: [{ likes: { _count: "desc" } }, { createdAt: "desc" }],
-      take: HOME_RECIPES_LIMIT,
-      select: publicRecipeExtendedSelect,
-    });
-
-    const categoriesRaw = await prisma.category.findMany({
-      select: { id: true, category: true },
-    });
-
-    return {
-      recentRows,
-      popularRows,
-      categories: sortCategoryOptions(categoriesRaw),
-    };
-  });
-}
-
-const getCachedHomeStaticData = unstable_cache(
-  loadHomeStaticDataFromDb,
-  ["home-static-data"],
-  { revalidate: 60, tags: ["home-recipes"] },
-);
+type HomeRecipeRow = {
+  id: string;
+  title: string;
+  content: string;
+  visibility: RecipeVisibility;
+  isFavorite: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  ownerId: string;
+  categoryId: string;
+  _count: { likes: number };
+};
 
 export async function getHomePublicRecipes(currentUserId: string | null): Promise<{
   recent: RecipeListItem[];
@@ -464,29 +455,68 @@ export async function getHomePublicRecipes(currentUserId: string | null): Promis
   return { recent, popular };
 }
 
-/** Все запросы главной страницы — кэш + один запрос лайков для авторизованного пользователя. */
+/** Запросы главной — без вложенных join в одном findMany (Neon закрывает соединение). */
 export async function getHomePageData(currentUserId: string | null): Promise<{
   recent: RecipeListItem[];
   popular: RecipeListItem[];
   categories: CategoryOption[];
 }> {
-  const { recentRows, popularRows, categories } = await getCachedHomeStaticData();
+  const recentRows = await prisma.recipe.findMany({
+    where: { visibility: RecipeVisibility.PUBLIC },
+    orderBy: { createdAt: "desc" },
+    take: HOME_RECIPES_LIMIT,
+    select: homeRecipeBaseSelect,
+  });
+
+  const popularRows = await prisma.recipe.findMany({
+    where: { visibility: RecipeVisibility.PUBLIC },
+    orderBy: [{ likes: { _count: "desc" } }, { createdAt: "desc" }],
+    take: HOME_RECIPES_LIMIT,
+    select: homeRecipeBaseSelect,
+  });
+
+  const categoriesRaw = await prisma.category.findMany({
+    select: { id: true, category: true },
+  });
+  const categoryMap = new Map(categoriesRaw.map((item) => [item.id, item]));
 
   const allRecipeIds = Array.from(
     new Set([...recentRows, ...popularRows].map((recipe) => recipe.id)),
   );
+  const likedRecipeIds = await fetchUserLikedRecipeIds(
+    currentUserId,
+    allRecipeIds,
+  );
 
-  const likedRecipeIds =
-    currentUserId && allRecipeIds.length > 0
-      ? await withDbRetry("home.likes", () =>
-          fetchUserLikedRecipeIds(currentUserId, allRecipeIds),
-        )
-      : new Set<string>();
+  const ownerIds = Array.from(
+    new Set([...recentRows, ...popularRows].map((row) => row.ownerId)),
+  );
+  const ownersForRows = await prisma.user.findMany({
+    where: { id: { in: ownerIds } },
+    select: { id: true, name: true, image: true },
+  });
+  const ownerMap = new Map(ownersForRows.map((item) => [item.id, item]));
+
+  const mapRows = (rows: HomeRecipeRow[]) =>
+    rows.map((row) => {
+      const { _count, categoryId, ownerId, ...recipe } = row;
+      const category = categoryMap.get(categoryId);
+
+      return {
+        ...recipe,
+        categoryId,
+        ownerId,
+        category: category ?? { id: categoryId, category: "Без категории" },
+        owner: ownerMap.get(ownerId) ?? { name: null, image: null },
+        likesCount: _count.likes,
+        likedByMe: likedRecipeIds.has(row.id),
+      };
+    });
 
   return {
-    recent: recentRows.map((row) => mapPublicRecipeRow(row, likedRecipeIds)),
-    popular: popularRows.map((row) => mapPublicRecipeRow(row, likedRecipeIds)),
-    categories,
+    recent: mapRows(recentRows),
+    popular: mapRows(popularRows),
+    categories: sortCategoryOptions(categoriesRaw),
   };
 }
 

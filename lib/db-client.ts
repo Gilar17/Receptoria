@@ -4,6 +4,7 @@ export type DbTarget = "local" | "work";
 
 function normalizeDatabaseUrl(raw: string): string {
   const url = new URL(raw);
+  const isDev = process.env.NODE_ENV === "development";
   url.searchParams.delete("channel_binding");
   url.searchParams.set("connect_timeout", "60");
 
@@ -12,11 +13,12 @@ function normalizeDatabaseUrl(raw: string): string {
   }
 
   if (url.hostname.includes("-pooler") && !url.searchParams.has("connection_limit")) {
-    url.searchParams.set("connection_limit", "1");
+    // В dev next dev держит процесс живым — одного соединения через pooler мало.
+    url.searchParams.set("connection_limit", isDev ? "5" : "1");
   }
 
   if (!url.searchParams.has("pool_timeout")) {
-    url.searchParams.set("pool_timeout", "30");
+    url.searchParams.set("pool_timeout", isDev ? "20" : "30");
   }
 
   return url.toString();
@@ -40,9 +42,13 @@ export function resolveDatabaseUrl(target: DbTarget = "work"): string {
   return normalizeDatabaseUrl(raw);
 }
 
-/** Runtime-подключение приложения: DATABASE_URL (Neon pooler), не DIRECT_URL. */
+/** Runtime-подключение: локально DIRECT_URL, на Vercel — DATABASE_URL (pooler). */
 export function resolveAppDatabaseUrl(): string {
-  const raw = process.env.DATABASE_URL ?? process.env.DIRECT_URL;
+  const onVercel = process.env.VERCEL === "1";
+  const raw =
+    !onVercel && process.env.DIRECT_URL
+      ? process.env.DIRECT_URL
+      : (process.env.DATABASE_URL ?? process.env.DIRECT_URL);
 
   if (!raw) {
     throw new Error("DATABASE_URL не задан");
@@ -73,13 +79,21 @@ export function isRetryableDbError(error: unknown): boolean {
 export function isTransientDbError(error: unknown): boolean {
   if (typeof error === "object" && error !== null && "code" in error) {
     const code = String((error as { code: unknown }).code);
-    if (code === "P1001" || code === "P1017" || code === "P2024") {
+    // P2024 — исчерпан pool; повтор только усугубляет задержку страницы.
+    if (code === "P2024") {
+      return false;
+    }
+    if (code === "P1001" || code === "P1017") {
       return true;
     }
   }
 
   const message = error instanceof Error ? error.message : String(error);
-  return /Server has closed the connection|connection reset|connection terminated|ECONNRESET|connection pool|Timed out fetching a new connection/i.test(
+  if (/connection pool|Timed out fetching a new connection/i.test(message)) {
+    return false;
+  }
+
+  return /Server has closed the connection|connection reset|connection terminated|ECONNRESET/i.test(
     message,
   );
 }
