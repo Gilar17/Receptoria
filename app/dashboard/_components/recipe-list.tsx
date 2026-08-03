@@ -27,6 +27,12 @@ export function RecipeList({
   gridClassName = "grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3",
 }: RecipeListProps) {
   if (view === "table") {
+    const openRecipeHrefs = openRecipeHref
+      ? Object.fromEntries(
+          recipes.map((recipe) => [recipe.id, openRecipeHref(recipe.id)]),
+        )
+      : undefined;
+
     return (
       <RecipeTable
         recipes={recipes}
@@ -34,7 +40,7 @@ export function RecipeList({
         showAuthor={showAuthor}
         showLikes={showLikes}
         showManagementActions={showManagementActions}
-        openRecipeHref={openRecipeHref}
+        openRecipeHrefs={openRecipeHrefs}
         categories={categories}
       />
     );

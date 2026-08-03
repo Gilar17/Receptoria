@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -44,26 +44,28 @@ type RecipeTableProps = {
   showAuthor?: boolean;
   showLikes?: boolean;
   showManagementActions?: boolean;
-  openRecipeHref?: (recipeId: string) => string;
+  openRecipeHrefs?: Record<string, string>;
   categories: CategoryOption[];
 };
 
 function RecipeTableRow({
   recipe,
   currentUserId,
-  showAuthor,
   showLikes,
   showManagementActions = true,
   openRecipeHref,
-  categories,
+  onView,
+  onEdit,
+  onDelete,
 }: {
   recipe: RecipeListItem;
   currentUserId: string | null;
-  showAuthor?: boolean;
   showLikes?: boolean;
   showManagementActions?: boolean;
-  openRecipeHref?: (recipeId: string) => string;
-  categories: CategoryOption[];
+  openRecipeHref?: string;
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -72,10 +74,6 @@ function RecipeTableRow({
     recipe,
     (state, update: Partial<RecipeListItem>) => ({ ...state, ...update }),
   );
-
-  const [viewOpen, setViewOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const isOwner = currentUserId === recipe.ownerId;
   const categoryName = optimisticRecipe.category?.category ?? "Без категории";
@@ -107,151 +105,181 @@ function RecipeTableRow({
   };
 
   return (
-    <>
-      <TableRow>
-        <TableCell className="w-10">
-          {showFavoriteStar ? (
-            <button
-              type="button"
-              onClick={handleToggleFavorite}
-              disabled={isPending}
-              className="rounded-md p-1 text-slate-400 transition hover:text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-50"
-              aria-label={
-                optimisticRecipe.isFavorite
-                  ? "Удалить рецепт из избранного"
-                  : "Добавить рецепт в избранное"
-              }
-            >
-              <Star
-                className={cn(
-                  "h-4 w-4",
-                  optimisticRecipe.isFavorite &&
-                    "fill-amber-400 text-amber-400",
-                )}
-              />
-            </button>
-          ) : null}
-        </TableCell>
-        <TableCell className="min-w-[160px] font-medium">
-          <div className="flex items-center gap-2">
-            <BookOpenText className="h-4 w-4 shrink-0 text-sky-600" />
-            <span className="line-clamp-2">{optimisticRecipe.title}</span>
-          </div>
-        </TableCell>
-        <TableCell className="min-w-[180px] text-sm text-slate-500">
-          {preview}
-        </TableCell>
-        <TableCell>
-          <Badge variant="secondary" className="gap-1 font-normal">
-            <Tag className="h-3 w-3" />
-            {categoryName}
-          </Badge>
-        </TableCell>
-        <TableCell className="whitespace-nowrap text-xs text-slate-500">
-          {formatRecipeDate(optimisticRecipe.updatedAt)}
-        </TableCell>
-        {showManagementActions ? (
-          <TableCell>
-            <RecipePublicToggle
-              recipeId={recipe.id}
-              visibility={optimisticRecipe.visibility}
-              isOwner={isOwner}
+    <TableRow>
+      <TableCell className="w-10">
+        {showFavoriteStar ? (
+          <button
+            type="button"
+            onClick={handleToggleFavorite}
+            disabled={isPending}
+            className="rounded-md p-1 text-slate-400 transition hover:text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-50"
+            aria-label={
+              optimisticRecipe.isFavorite
+                ? "Удалить рецепт из избранного"
+                : "Добавить рецепт в избранное"
+            }
+          >
+            <Star
+              className={cn(
+                "h-4 w-4",
+                optimisticRecipe.isFavorite &&
+                  "fill-amber-400 text-amber-400",
+              )}
             />
-          </TableCell>
+          </button>
         ) : null}
-        {showLikes ? (
-          <TableCell>
-            <LikeButton
-              recipeId={recipe.id}
-              initialLiked={recipe.likedByMe ?? false}
-              initialCount={recipe.likesCount ?? 0}
-            />
-          </TableCell>
-        ) : null}
+      </TableCell>
+      <TableCell className="min-w-[160px] font-medium">
+        <div className="flex items-center gap-2">
+          <BookOpenText className="h-4 w-4 shrink-0 text-sky-600" />
+          <span className="line-clamp-2">{optimisticRecipe.title}</span>
+        </div>
+      </TableCell>
+      <TableCell className="min-w-[180px] text-sm text-slate-500">
+        {preview}
+      </TableCell>
+      <TableCell>
+        <Badge variant="secondary" className="gap-1 font-normal">
+          <Tag className="h-3 w-3" />
+          {categoryName}
+        </Badge>
+      </TableCell>
+      <TableCell className="whitespace-nowrap text-xs text-slate-500">
+        {formatRecipeDate(optimisticRecipe.updatedAt)}
+      </TableCell>
+      {showManagementActions ? (
         <TableCell>
-          <div className="flex flex-wrap items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {openRecipeHref ? (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    aria-label="Открыть"
-                    asChild
-                  >
-                    <Link href={openRecipeHref(recipe.id)}>
-                      <Eye className="h-3.5 w-3.5" />
-                    </Link>
-                  </Button>
-                ) : (
+          <RecipePublicToggle
+            recipeId={recipe.id}
+            visibility={optimisticRecipe.visibility}
+            isOwner={isOwner}
+          />
+        </TableCell>
+      ) : null}
+      {showLikes ? (
+        <TableCell>
+          <LikeButton
+            recipeId={recipe.id}
+            initialLiked={recipe.likedByMe ?? false}
+            initialCount={recipe.likesCount ?? 0}
+          />
+        </TableCell>
+      ) : null}
+      <TableCell>
+        <div className="flex flex-wrap items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {openRecipeHref ? (
+                <Link
+                  href={openRecipeHref}
+                  aria-label="Открыть"
+                  className={buttonVariants({
+                    variant: "outline",
+                    size: "icon",
+                    className: "h-8 w-8",
+                  })}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </Link>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label="Открыть"
+                  onClick={onView}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </TooltipTrigger>
+            <TooltipContent side="top">Открыть</TooltipContent>
+          </Tooltip>
+          <CopyRecipeButton
+            title={optimisticRecipe.title}
+            categoryName={categoryName}
+            content={optimisticRecipe.content}
+          />
+          {isOwner && showManagementActions ? (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <Button
                     type="button"
                     variant="outline"
                     size="icon"
                     className="h-8 w-8"
-                    aria-label="Открыть"
-                    onClick={() => setViewOpen(true)}
+                    aria-label="Изменить"
+                    onClick={onEdit}
                   >
-                    <Eye className="h-3.5 w-3.5" />
+                    <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                )}
-              </TooltipTrigger>
-              <TooltipContent side="top">Открыть</TooltipContent>
-            </Tooltip>
-            <CopyRecipeButton
-              title={optimisticRecipe.title}
-              categoryName={categoryName}
-              content={optimisticRecipe.content}
-            />
-            {isOwner && showManagementActions ? (
-              <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      aria-label="Изменить"
-                      onClick={() => setEditOpen(true)}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Изменить</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      aria-label="Удалить"
-                      onClick={() => setDeleteOpen(true)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Удалить</TooltipContent>
-                </Tooltip>
-              </>
-            ) : null}
-          </div>
-        </TableCell>
-      </TableRow>
+                </TooltipTrigger>
+                <TooltipContent side="top">Изменить</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    aria-label="Удалить"
+                    onClick={onDelete}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Удалить</TooltipContent>
+              </Tooltip>
+            </>
+          ) : null}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
 
+function RecipeTableRowDialogs({
+  recipe,
+  currentUserId,
+  showAuthor,
+  showManagementActions = true,
+  categories,
+  viewOpen,
+  editOpen,
+  deleteOpen,
+  onViewOpenChange,
+  onEditOpenChange,
+  onDeleteOpenChange,
+}: {
+  recipe: RecipeListItem;
+  currentUserId: string | null;
+  showAuthor?: boolean;
+  showManagementActions?: boolean;
+  categories: CategoryOption[];
+  viewOpen: boolean;
+  editOpen: boolean;
+  deleteOpen: boolean;
+  onViewOpenChange: (open: boolean) => void;
+  onEditOpenChange: (open: boolean) => void;
+  onDeleteOpenChange: (open: boolean) => void;
+}) {
+  const isOwner = currentUserId === recipe.ownerId;
+
+  return (
+    <>
       <RecipeViewDialog
         open={viewOpen}
-        onOpenChange={setViewOpen}
-        recipe={optimisticRecipe}
+        onOpenChange={onViewOpenChange}
+        recipe={recipe}
         showAuthor={showAuthor}
         onEdit={
           isOwner && showManagementActions
             ? () => {
-                setViewOpen(false);
-                setEditOpen(true);
+                onViewOpenChange(false);
+                onEditOpenChange(true);
               }
             : undefined
         }
@@ -261,14 +289,14 @@ function RecipeTableRow({
         <>
           <RecipeDialog
             open={editOpen}
-            onOpenChange={setEditOpen}
+            onOpenChange={onEditOpenChange}
             mode="edit"
             recipe={recipe}
             categories={categories}
           />
           <DeleteRecipeDialog
             open={deleteOpen}
-            onOpenChange={setDeleteOpen}
+            onOpenChange={onDeleteOpenChange}
             recipeId={recipe.id}
             recipeTitle={recipe.title}
           />
@@ -284,41 +312,76 @@ export function RecipeTable({
   showAuthor = false,
   showLikes = false,
   showManagementActions = true,
-  openRecipeHref,
+  openRecipeHrefs,
   categories,
 }: RecipeTableProps) {
+  const [viewRecipeId, setViewRecipeId] = useState<string | null>(null);
+  const [editRecipeId, setEditRecipeId] = useState<string | null>(null);
+  const [deleteRecipeId, setDeleteRecipeId] = useState<string | null>(null);
+
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-10" />
-            <TableHead>Название</TableHead>
-            <TableHead>Описание</TableHead>
-            <TableHead>Категория</TableHead>
-            <TableHead>Обновлено</TableHead>
-            {showManagementActions ? (
-              <TableHead className="w-12">Доступ</TableHead>
-            ) : null}
-            {showLikes ? <TableHead className="w-24">Лайки</TableHead> : null}
-            <TableHead>Действия</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {recipes.map((recipe) => (
-            <RecipeTableRow
-              key={recipe.id}
-              recipe={recipe}
-              currentUserId={currentUserId}
-              showAuthor={showAuthor}
-              showLikes={showLikes}
-              showManagementActions={showManagementActions}
-              openRecipeHref={openRecipeHref}
-              categories={categories}
-            />
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <>
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10" />
+              <TableHead>Название</TableHead>
+              <TableHead>Описание</TableHead>
+              <TableHead>Категория</TableHead>
+              <TableHead>Обновлено</TableHead>
+              {showManagementActions ? (
+                <TableHead className="w-12">Доступ</TableHead>
+              ) : null}
+              {showLikes ? <TableHead className="w-24">Лайки</TableHead> : null}
+              <TableHead>Действия</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {recipes.map((recipe) => (
+              <RecipeTableRow
+                key={recipe.id}
+                recipe={recipe}
+                currentUserId={currentUserId}
+                showLikes={showLikes}
+                showManagementActions={showManagementActions}
+                openRecipeHref={openRecipeHrefs?.[recipe.id]}
+                onView={() => setViewRecipeId(recipe.id)}
+                onEdit={() => setEditRecipeId(recipe.id)}
+                onDelete={() => setDeleteRecipeId(recipe.id)}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      {recipes.map((recipe) => (
+        <RecipeTableRowDialogs
+          key={`dialogs-${recipe.id}`}
+          recipe={recipe}
+          currentUserId={currentUserId}
+          showAuthor={showAuthor}
+          showManagementActions={showManagementActions}
+          categories={categories}
+          viewOpen={viewRecipeId === recipe.id}
+          editOpen={editRecipeId === recipe.id}
+          deleteOpen={deleteRecipeId === recipe.id}
+          onViewOpenChange={(open) => {
+            if (!open) {
+              setViewRecipeId(null);
+            }
+          }}
+          onEditOpenChange={(open) => {
+            if (!open) {
+              setEditRecipeId(null);
+            }
+          }}
+          onDeleteOpenChange={(open) => {
+            if (!open) {
+              setDeleteRecipeId(null);
+            }
+          }}
+        />
+      ))}
+    </>
   );
 }
