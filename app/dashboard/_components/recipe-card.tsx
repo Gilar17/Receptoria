@@ -41,7 +41,7 @@ const recipeActionButtonBase =
 
 const recipeOpenButtonClass = cn(
   recipeActionButtonBase,
-  "border-[#0E6B59] bg-[#0E6B59] hover:border-[#0c5a4a] hover:bg-[#0c5a4a] hover:text-white focus-visible:ring-[#0E6B59]",
+  "border-[#11878D] bg-[#11878D] hover:border-[#0E7479] hover:bg-[#0E7479] hover:text-white focus-visible:ring-[#11878D]",
 );
 
 const recipeOpenButtonCompactClass = cn(
@@ -51,12 +51,12 @@ const recipeOpenButtonCompactClass = cn(
 
 const recipeEditButtonClass = cn(
   recipeActionButtonBase,
-  "min-w-0 flex-1 border-[#084991] bg-[#084991] hover:border-[#063a73] hover:bg-[#063a73] hover:text-white focus-visible:ring-[#084991]",
+  "min-w-0 flex-1 border-[#0367A6] bg-[#0367A6] hover:border-[#02598F] hover:bg-[#02598F] hover:text-white focus-visible:ring-[#0367A6]",
 );
 
 const recipeDeleteButtonClass = cn(
   recipeActionButtonBase,
-  "min-w-0 flex-1 border-[#D4130F] bg-[#D4130F] hover:border-[#b8100d] hover:bg-[#b8100d] hover:text-white focus-visible:ring-[#D4130F]",
+  "min-w-0 flex-1 border-[#EC686B] bg-[#EC686B] hover:border-[#D9575A] hover:bg-[#D9575A] hover:text-white focus-visible:ring-[#EC686B]",
 );
 
 export function RecipeCard({
