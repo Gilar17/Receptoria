@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Footer } from "@/components/layout/footer";
+import { Header } from "@/components/layout/header";
+import { SiteToaster } from "@/components/layout/site-toaster";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,7 +35,10 @@ export default function RootLayout({
         className="min-h-full flex flex-col bg-zinc-50 text-zinc-900"
         suppressHydrationWarning
       >
-        {children}
+        <Header />
+        <main className="flex-1">{children}</main>
+        <Footer />
+        <SiteToaster />
       </body>
     </html>
   );

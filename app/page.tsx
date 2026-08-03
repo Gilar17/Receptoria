@@ -1,63 +1,61 @@
-import { withDbRetry } from "@/lib/db-client";
-import { prisma } from "@/lib/prisma";
+import { getCurrentUserId } from "@/lib/auth";
+import { HomeHero } from "@/app/_components/home-hero";
+import { HomeRecipeSection } from "@/app/_components/home-recipe-section";
+import { EmptyState } from "@/app/dashboard/_components/empty-state";
+import {
+  getHomePageData,
+  type CategoryOption,
+  type RecipeListItem,
+} from "@/lib/recipes/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  let notes: { id: string; content: string; createdAt: Date }[] = [];
+  const currentUserId = await getCurrentUserId();
+
+  let recent: RecipeListItem[] = [];
+  let popular: RecipeListItem[] = [];
+  let categories: CategoryOption[] = [];
   let dbError = false;
 
   try {
-    notes = await withDbRetry("home-notes", () =>
-      prisma.note.findMany({
-        orderBy: { createdAt: "desc" },
-        select: { id: true, content: true, createdAt: true },
-      }),
-    );
+    const homeData = await getHomePageData(currentUserId);
+    recent = homeData.recent;
+    popular = homeData.popular;
+    categories = homeData.categories;
   } catch (error) {
-    console.error("home.notes:", error);
+    console.error("home.recipes:", error);
     dbError = true;
   }
 
+  if (dbError) {
+    return (
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+        <HomeHero isAuthenticated={Boolean(currentUserId)} />
+        <EmptyState title="Не удалось загрузить рецепты. Попробуйте обновить страницу." />
+      </div>
+    );
+  }
+
   return (
-    <main className="mx-auto flex min-h-full w-full max-w-2xl flex-col gap-8 px-6 py-16">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
-          Receptoria
-        </h1>
-        <p className="text-zinc-600">
-          Сервис по обмену рецептами. Ниже — заметки из PostgreSQL (Neon).
-        </p>
-      </header>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+      <HomeHero isAuthenticated={Boolean(currentUserId)} />
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-medium text-zinc-900">Заметки</h2>
+      <HomeRecipeSection
+        title="Новые рецепты"
+        recipes={recent}
+        currentUserId={currentUserId}
+        categories={categories}
+        emptyTitle="Пока нет публичных рецептов"
+      />
 
-        {dbError ? (
-          <p className="text-zinc-500">
-            Не удалось подключиться к базе данных. Попробуйте обновить страницу
-            позже.
-          </p>
-        ) : notes.length === 0 ? (
-          <p className="text-zinc-500">
-            Пока нет записей. Выполните seed:{" "}
-            <code className="rounded bg-zinc-100 px-1.5 py-0.5 text-sm">
-              npx prisma db seed
-            </code>
-          </p>
-        ) : (
-          <ul className="divide-y divide-zinc-200 border border-zinc-200">
-            {notes.map((note) => (
-              <li key={note.id} className="flex flex-col gap-1 px-4 py-3">
-                <span className="font-medium text-zinc-900">{note.content}</span>
-                <span className="text-sm text-zinc-500">
-                  {note.createdAt.toLocaleString("ru-RU")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </main>
+      <HomeRecipeSection
+        title="Популярные рецепты"
+        recipes={popular}
+        currentUserId={currentUserId}
+        categories={categories}
+        emptyTitle="Пока нет популярных рецептов"
+      />
+    </div>
   );
 }

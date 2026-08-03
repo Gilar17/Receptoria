@@ -1,7 +1,7 @@
 "use server";
 
 import { RecipeVisibility } from "@prisma/client";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { RECIPES_PAGE_SIZE } from "@/lib/recipes/constants";
@@ -32,6 +32,8 @@ export type ActionResult<T = void> =
   | { success: false; error: string };
 
 const REVALIDATE_PATHS = [
+  "/",
+  "/catalog",
   "/dashboard",
   "/dashboard/public",
   "/dashboard/favorites",
@@ -41,6 +43,7 @@ function revalidateDashboardPaths() {
   for (const path of REVALIDATE_PATHS) {
     revalidatePath(path);
   }
+  updateTag("home-recipes");
 }
 
 /** Получить userId только из серверной сессии */

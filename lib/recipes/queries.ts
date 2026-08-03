@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { withDbRetry } from "@/lib/db-client";
 import { DEFAULT_CATEGORY_NAME, RECIPES_PAGE_SIZE } from "@/lib/recipes/constants";
@@ -28,10 +29,12 @@ export type RecipeListItem = {
   id: string;
   title: string;
   content: string;
+  description?: string | null;
   visibility: RecipeVisibility;
   isFavorite: boolean;
   createdAt: Date;
   updatedAt: Date;
+  publishedAt?: Date | null;
   ownerId: string;
   categoryId: string;
   category: {
@@ -42,9 +45,12 @@ export type RecipeListItem = {
     name: string | null;
     image: string | null;
   };
+  tags?: { id: string; name: string }[];
   likesCount?: number;
   likedByMe?: boolean;
 };
+
+export const HOME_RECIPES_LIMIT = 12;
 
 export type PaginatedRecipes = {
   items: RecipeListItem[];
@@ -363,6 +369,153 @@ export async function getRecipeByIdForOwner(recipeId: string, ownerId: string) {
     return null;
   }
   return recipe;
+}
+
+const publicRecipeExtendedSelect = {
+  ...recipeSelect,
+  description: true,
+  publishedAt: true,
+  tags: { select: { id: true, name: true } },
+  _count: { select: { likes: true } },
+} as const;
+
+function mapPublicRecipeRow(
+  row: {
+    _count: { likes: number };
+    tags: { id: string; name: string }[];
+    description: string | null;
+    publishedAt: Date | null;
+  } & Omit<
+    RecipeListItem,
+    "likesCount" | "likedByMe" | "tags" | "description" | "publishedAt"
+  >,
+  likedRecipeIds: Set<string>,
+): RecipeListItem {
+  const { _count, tags, description, publishedAt, ...recipe } = row;
+
+  return {
+    ...recipe,
+    description,
+    publishedAt,
+    tags,
+    likesCount: _count.likes,
+    likedByMe: likedRecipeIds.has(recipe.id),
+  };
+}
+
+async function fetchUserLikedRecipeIds(
+  userId: string | null,
+  recipeIds: string[],
+): Promise<Set<string>> {
+  if (!userId || recipeIds.length === 0) {
+    return new Set();
+  }
+
+  const likes = await prisma.recipeLike.findMany({
+    where: {
+      userId,
+      recipeId: { in: recipeIds },
+    },
+    select: { recipeId: true },
+  });
+
+  return new Set(likes.map((like) => like.recipeId));
+}
+
+async function loadHomeStaticDataFromDb() {
+  return withDbRetry("home.staticData", async () => {
+    const recentRows = await prisma.recipe.findMany({
+      where: { visibility: RecipeVisibility.PUBLIC },
+      orderBy: { createdAt: "desc" },
+      take: HOME_RECIPES_LIMIT,
+      select: publicRecipeExtendedSelect,
+    });
+
+    const popularRows = await prisma.recipe.findMany({
+      where: { visibility: RecipeVisibility.PUBLIC },
+      orderBy: [{ likes: { _count: "desc" } }, { createdAt: "desc" }],
+      take: HOME_RECIPES_LIMIT,
+      select: publicRecipeExtendedSelect,
+    });
+
+    const categoriesRaw = await prisma.category.findMany({
+      select: { id: true, category: true },
+    });
+
+    return {
+      recentRows,
+      popularRows,
+      categories: sortCategoryOptions(categoriesRaw),
+    };
+  });
+}
+
+const getCachedHomeStaticData = unstable_cache(
+  loadHomeStaticDataFromDb,
+  ["home-static-data"],
+  { revalidate: 60, tags: ["home-recipes"] },
+);
+
+export async function getHomePublicRecipes(currentUserId: string | null): Promise<{
+  recent: RecipeListItem[];
+  popular: RecipeListItem[];
+}> {
+  const { recent, popular } = await getHomePageData(currentUserId);
+  return { recent, popular };
+}
+
+/** Все запросы главной страницы — кэш + один запрос лайков для авторизованного пользователя. */
+export async function getHomePageData(currentUserId: string | null): Promise<{
+  recent: RecipeListItem[];
+  popular: RecipeListItem[];
+  categories: CategoryOption[];
+}> {
+  const { recentRows, popularRows, categories } = await getCachedHomeStaticData();
+
+  const allRecipeIds = Array.from(
+    new Set([...recentRows, ...popularRows].map((recipe) => recipe.id)),
+  );
+
+  const likedRecipeIds =
+    currentUserId && allRecipeIds.length > 0
+      ? await withDbRetry("home.likes", () =>
+          fetchUserLikedRecipeIds(currentUserId, allRecipeIds),
+        )
+      : new Set<string>();
+
+  return {
+    recent: recentRows.map((row) => mapPublicRecipeRow(row, likedRecipeIds)),
+    popular: popularRows.map((row) => mapPublicRecipeRow(row, likedRecipeIds)),
+    categories,
+  };
+}
+
+export async function getRecipeForPublicView(
+  recipeId: string,
+  currentUserId: string | null,
+): Promise<RecipeListItem | null> {
+  return withDbRetry("recipe.publicView", async () => {
+    const row = await prisma.recipe.findUnique({
+      where: { id: recipeId },
+      select: publicRecipeExtendedSelect,
+    });
+
+    if (!row) {
+      return null;
+    }
+
+    const isOwner = currentUserId === row.ownerId;
+    if (row.visibility !== RecipeVisibility.PUBLIC && !isOwner) {
+      return null;
+    }
+
+    const likedRecipeIds = await fetchUserLikedRecipeIds(
+      currentUserId,
+      [recipeId],
+    );
+
+    return mapPublicRecipeRow(row, likedRecipeIds);
+  });
 }
 
 export { getDefaultCategoryId };

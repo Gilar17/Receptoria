@@ -15,6 +15,10 @@ function normalizeDatabaseUrl(raw: string): string {
     url.searchParams.set("connection_limit", "1");
   }
 
+  if (!url.searchParams.has("pool_timeout")) {
+    url.searchParams.set("pool_timeout", "30");
+  }
+
   return url.toString();
 }
 
@@ -69,13 +73,13 @@ export function isRetryableDbError(error: unknown): boolean {
 export function isTransientDbError(error: unknown): boolean {
   if (typeof error === "object" && error !== null && "code" in error) {
     const code = String((error as { code: unknown }).code);
-    if (code === "P1001" || code === "P1017") {
+    if (code === "P1001" || code === "P1017" || code === "P2024") {
       return true;
     }
   }
 
   const message = error instanceof Error ? error.message : String(error);
-  return /Server has closed the connection|connection reset|connection terminated|ECONNRESET/i.test(
+  return /Server has closed the connection|connection reset|connection terminated|ECONNRESET|connection pool|Timed out fetching a new connection/i.test(
     message,
   );
 }

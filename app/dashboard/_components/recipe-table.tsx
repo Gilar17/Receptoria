@@ -1,6 +1,7 @@
 "use client";
 
 import { useOptimistic, useState, useTransition } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -42,6 +43,8 @@ type RecipeTableProps = {
   currentUserId: string | null;
   showAuthor?: boolean;
   showLikes?: boolean;
+  showManagementActions?: boolean;
+  openRecipeHref?: (recipeId: string) => string;
   categories: CategoryOption[];
 };
 
@@ -50,12 +53,16 @@ function RecipeTableRow({
   currentUserId,
   showAuthor,
   showLikes,
+  showManagementActions = true,
+  openRecipeHref,
   categories,
 }: {
   recipe: RecipeListItem;
   currentUserId: string | null;
   showAuthor?: boolean;
   showLikes?: boolean;
+  showManagementActions?: boolean;
+  openRecipeHref?: (recipeId: string) => string;
   categories: CategoryOption[];
 }) {
   const router = useRouter();
@@ -72,7 +79,8 @@ function RecipeTableRow({
 
   const isOwner = currentUserId === recipe.ownerId;
   const categoryName = optimisticRecipe.category?.category ?? "Без категории";
-  const showFavoriteStar = Boolean(currentUserId) && (isOwner || showLikes);
+  const showFavoriteStar =
+    showManagementActions && Boolean(currentUserId) && (isOwner || showLikes);
   const preview =
     optimisticRecipe.content.length > 80
       ? `${optimisticRecipe.content.slice(0, 80).trim()}…`
@@ -142,13 +150,15 @@ function RecipeTableRow({
         <TableCell className="whitespace-nowrap text-xs text-slate-500">
           {formatRecipeDate(optimisticRecipe.updatedAt)}
         </TableCell>
-        <TableCell>
-          <RecipePublicToggle
-            recipeId={recipe.id}
-            visibility={optimisticRecipe.visibility}
-            isOwner={isOwner}
-          />
-        </TableCell>
+        {showManagementActions ? (
+          <TableCell>
+            <RecipePublicToggle
+              recipeId={recipe.id}
+              visibility={optimisticRecipe.visibility}
+              isOwner={isOwner}
+            />
+          </TableCell>
+        ) : null}
         {showLikes ? (
           <TableCell>
             <LikeButton
@@ -162,16 +172,30 @@ function RecipeTableRow({
           <div className="flex flex-wrap items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  aria-label="Открыть"
-                  onClick={() => setViewOpen(true)}
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                </Button>
+                {openRecipeHref ? (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    aria-label="Открыть"
+                    asChild
+                  >
+                    <Link href={openRecipeHref(recipe.id)}>
+                      <Eye className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    aria-label="Открыть"
+                    onClick={() => setViewOpen(true)}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </TooltipTrigger>
               <TooltipContent side="top">Открыть</TooltipContent>
             </Tooltip>
@@ -180,7 +204,7 @@ function RecipeTableRow({
               categoryName={categoryName}
               content={optimisticRecipe.content}
             />
-            {isOwner ? (
+            {isOwner && showManagementActions ? (
               <>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -224,7 +248,7 @@ function RecipeTableRow({
         recipe={optimisticRecipe}
         showAuthor={showAuthor}
         onEdit={
-          isOwner
+          isOwner && showManagementActions
             ? () => {
                 setViewOpen(false);
                 setEditOpen(true);
@@ -233,7 +257,7 @@ function RecipeTableRow({
         }
       />
 
-      {isOwner ? (
+      {isOwner && showManagementActions ? (
         <>
           <RecipeDialog
             open={editOpen}
@@ -259,6 +283,8 @@ export function RecipeTable({
   currentUserId,
   showAuthor = false,
   showLikes = false,
+  showManagementActions = true,
+  openRecipeHref,
   categories,
 }: RecipeTableProps) {
   return (
@@ -271,7 +297,9 @@ export function RecipeTable({
             <TableHead>Описание</TableHead>
             <TableHead>Категория</TableHead>
             <TableHead>Обновлено</TableHead>
-            <TableHead className="w-12">Доступ</TableHead>
+            {showManagementActions ? (
+              <TableHead className="w-12">Доступ</TableHead>
+            ) : null}
             {showLikes ? <TableHead className="w-24">Лайки</TableHead> : null}
             <TableHead>Действия</TableHead>
           </TableRow>
@@ -284,6 +312,8 @@ export function RecipeTable({
               currentUserId={currentUserId}
               showAuthor={showAuthor}
               showLikes={showLikes}
+              showManagementActions={showManagementActions}
+              openRecipeHref={openRecipeHref}
               categories={categories}
             />
           ))}

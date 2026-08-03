@@ -8,8 +8,11 @@ type RecipeListProps = {
   currentUserId: string | null;
   showAuthor?: boolean;
   showLikes?: boolean;
+  showManagementActions?: boolean;
+  openRecipeHref?: (recipeId: string) => string;
   categories: CategoryOption[];
   view?: RecipeViewMode;
+  gridClassName?: string;
 };
 
 export function RecipeList({
@@ -17,8 +20,11 @@ export function RecipeList({
   currentUserId,
   showAuthor = false,
   showLikes = false,
+  showManagementActions = true,
+  openRecipeHref,
   categories,
   view = "cards",
+  gridClassName = "grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3",
 }: RecipeListProps) {
   if (view === "table") {
     return (
@@ -27,13 +33,15 @@ export function RecipeList({
         currentUserId={currentUserId}
         showAuthor={showAuthor}
         showLikes={showLikes}
+        showManagementActions={showManagementActions}
+        openRecipeHref={openRecipeHref}
         categories={categories}
       />
     );
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+    <div className={gridClassName}>
       {recipes.map((recipe) => (
         <RecipeCard
           key={recipe.id}
@@ -41,6 +49,8 @@ export function RecipeList({
           currentUserId={currentUserId}
           showAuthor={showAuthor}
           showLikes={showLikes}
+          showManagementActions={showManagementActions}
+          openRecipeHref={openRecipeHref?.(recipe.id)}
           categories={categories}
         />
       ))}

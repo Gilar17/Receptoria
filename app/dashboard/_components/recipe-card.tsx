@@ -2,6 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { toast } from "sonner";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -29,6 +30,8 @@ type RecipeCardProps = {
   currentUserId: string | null;
   showAuthor?: boolean;
   showLikes?: boolean;
+  showManagementActions?: boolean;
+  openRecipeHref?: string;
   categories: CategoryOption[];
 };
 
@@ -64,6 +67,8 @@ export function RecipeCard({
   currentUserId,
   showAuthor = false,
   showLikes = false,
+  showManagementActions = true,
+  openRecipeHref,
   categories,
 }: RecipeCardProps) {
   const router = useRouter();
@@ -80,7 +85,18 @@ export function RecipeCard({
 
   const isOwner = currentUserId === recipe.ownerId;
   const categoryName = optimisticRecipe.category?.category ?? "Без категории";
-  const showFavoriteStar = Boolean(currentUserId) && (isOwner || showLikes);
+  const showFavoriteStar =
+    showManagementActions && Boolean(currentUserId) && (isOwner || showLikes);
+  const cardDescription =
+    optimisticRecipe.description?.trim() || optimisticRecipe.content;
+  const displayDate = optimisticRecipe.publishedAt ?? optimisticRecipe.updatedAt;
+
+  const openButtonContent = (
+    <>
+      <Eye className="h-3.5 w-3.5 shrink-0" />
+      Открыть
+    </>
+  );
 
   const handleToggleFavorite = () => {
     if (!currentUserId) {
@@ -136,16 +152,18 @@ export function RecipeCard({
                 />
               </button>
             ) : null}
-            <RecipePublicToggle
-              recipeId={recipe.id}
-              visibility={optimisticRecipe.visibility}
-              isOwner={isOwner}
-            />
+            {showManagementActions ? (
+              <RecipePublicToggle
+                recipeId={recipe.id}
+                visibility={optimisticRecipe.visibility}
+                isOwner={isOwner}
+              />
+            ) : null}
           </div>
         </div>
 
         <p className="mt-2 line-clamp-3 flex-1 text-sm text-slate-500">
-          {optimisticRecipe.content}
+          {cardDescription}
         </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
@@ -153,15 +171,18 @@ export function RecipeCard({
             <Tag className="h-3 w-3" />
             {categoryName}
           </Badge>
-          <span className="text-slate-400">
-            {formatRecipeDate(optimisticRecipe.updatedAt)}
-          </span>
+          {optimisticRecipe.tags?.map((tag) => (
+            <Badge key={tag.id} variant="outline" className="font-normal">
+              {tag.name}
+            </Badge>
+          ))}
+          <span className="text-slate-400">{formatRecipeDate(displayDate)}</span>
           <CopyRecipeButton
             title={optimisticRecipe.title}
             categoryName={categoryName}
             content={optimisticRecipe.content}
           />
-          {showLikes && isOwner ? (
+          {showLikes && isOwner && showManagementActions ? (
             <LikeButton
               recipeId={recipe.id}
               initialLiked={recipe.likedByMe ?? false}
@@ -189,34 +210,53 @@ export function RecipeCard({
           </div>
         ) : null}
 
-        {!isOwner && showLikes ? (
+        {!showManagementActions || (!isOwner && showLikes) ? (
           <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-            <button
-              type="button"
-              className={recipeOpenButtonCompactClass}
-              onClick={() => setViewOpen(true)}
-            >
-              <Eye className="h-3.5 w-3.5 shrink-0" />
-              Открыть
-            </button>
-            <LikeButton
-              recipeId={recipe.id}
-              initialLiked={recipe.likedByMe ?? false}
-              initialCount={recipe.likesCount ?? 0}
-            />
+            {openRecipeHref ? (
+              <Link href={openRecipeHref} className={recipeOpenButtonCompactClass}>
+                {openButtonContent}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className={recipeOpenButtonCompactClass}
+                onClick={() => setViewOpen(true)}
+              >
+                {openButtonContent}
+              </button>
+            )}
+            {showLikes ? (
+              <LikeButton
+                recipeId={recipe.id}
+                initialLiked={recipe.likedByMe ?? false}
+                initialCount={recipe.likesCount ?? 0}
+              />
+            ) : null}
           </div>
         ) : (
           <div className="mt-3 flex flex-nowrap items-center gap-2 border-t border-slate-100 pt-3">
-            <button
-              type="button"
-              className={isOwner ? recipeOpenButtonClass : recipeOpenButtonCompactClass}
-              onClick={() => setViewOpen(true)}
-            >
-              <Eye className="h-3.5 w-3.5 shrink-0" />
-              Открыть
-            </button>
+            {openRecipeHref ? (
+              <Link
+                href={openRecipeHref}
+                className={
+                  isOwner ? recipeOpenButtonClass : recipeOpenButtonCompactClass
+                }
+              >
+                {openButtonContent}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className={
+                  isOwner ? recipeOpenButtonClass : recipeOpenButtonCompactClass
+                }
+                onClick={() => setViewOpen(true)}
+              >
+                {openButtonContent}
+              </button>
+            )}
 
-            {isOwner ? (
+            {isOwner && showManagementActions ? (
               <>
                 <button
                   type="button"
@@ -246,7 +286,7 @@ export function RecipeCard({
         recipe={optimisticRecipe}
         showAuthor={showAuthor}
         onEdit={
-          isOwner
+          isOwner && showManagementActions
             ? () => {
                 setViewOpen(false);
                 setEditOpen(true);
@@ -255,7 +295,7 @@ export function RecipeCard({
         }
       />
 
-      {isOwner ? (
+      {isOwner && showManagementActions ? (
         <>
           <RecipeDialog
             open={editOpen}
